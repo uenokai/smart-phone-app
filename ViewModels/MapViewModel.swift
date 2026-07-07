@@ -10,6 +10,8 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var error: String? = nil
     @Published var userLocation: CLLocationCoordinate2D? = nil
     @Published var selectedPlace: Place? = nil
+    /// 現在表示中の地図の中心（地図を動かした場所で検索できるようにする）
+    @Published var mapCenter: CLLocationCoordinate2D? = nil
 
     private let googlePlacesService: GooglePlacesService
     private let locationManager = CLLocationManager()
@@ -31,6 +33,11 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.startUpdatingLocation()
     }
 
+    /// ピンタップ時に該当するお店を選択する
+    func selectPlace(id: String) {
+        selectedPlace = places.first { $0.id == id }
+    }
+
     /// 条件と好みプロファイルに基づいてお店を検索
     /// 1. Nearby Searchで候補を取得し一次ランキング
     /// 2. 上位の候補にDetails APIで口コミ本文などを付加
@@ -43,7 +50,8 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         isLoading = true
         error = nil
 
-        guard let userLocation = userLocation else {
+        // 地図を動かしていればその中心、そうでなければ現在地を検索起点にする
+        guard let origin = mapCenter ?? userLocation else {
             error = "位置情報を取得できません"
             isLoading = false
             return
@@ -51,8 +59,8 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         do {
             let results = try await googlePlacesService.searchPlaces(
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
+                latitude: origin.latitude,
+                longitude: origin.longitude,
                 filter: filter
             )
             // APIが対応していない条件（最低評価など）をクライアント側で絞り込む

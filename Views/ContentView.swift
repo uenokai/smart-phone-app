@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 /// アプリのメイン画面ビュー
 struct ContentView: View {
@@ -7,10 +8,9 @@ struct ContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var favoritesViewModel = FavoritesViewModel()
     @StateObject private var tasteProfileViewModel = TasteProfileViewModel()
-    @State private var selectedPlace: Place? = nil
-    @State private var showDetailView = false
     @State private var showAccountView = false
     @State private var showFavoritesView = false
+    @State private var isPanelExpanded = true
 
     var body: some View {
         ZStack {
@@ -21,17 +21,38 @@ struct ContentView: View {
                     mapViewModel.startUpdatingLocation()
                 }
 
-            // 下部フィルターパネル
-            VStack {
+            // 下部エリア（結果カード + 開閉式フィルターパネル）
+            VStack(spacing: 0) {
                 Spacer()
+
+                // 結果カードの横スクロール（パネル収納時のみ表示し、地図と両立させる）
+                if !mapViewModel.places.isEmpty && !isPanelExpanded {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(mapViewModel.places) { place in
+                                PlaceCardView(
+                                    place: place,
+                                    distanceText: distanceText(to: place)
+                                )
+                                .onTapGesture {
+                                    mapViewModel.selectedPlace = place
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                    }
+                }
+
                 FilterPanelView(
                     searchViewModel: searchViewModel,
                     mapViewModel: mapViewModel,
                     tasteProfileViewModel: tasteProfileViewModel,
-                    favoritesViewModel: favoritesViewModel
+                    favoritesViewModel: favoritesViewModel,
+                    isExpanded: $isPanelExpanded
                 )
-                .frame(maxHeight: 400)
-                .background(Color.white)
+                .frame(maxHeight: isPanelExpanded ? 400 : nil)
+                .background(Color(.systemBackground))
                 .cornerRadius(16, corners: [.topLeft, .topRight])
                 .shadow(radius: 10)
             }
@@ -58,7 +79,7 @@ struct ContentView: View {
                                 .font(.title2)
                                 .foregroundColor(.blue)
                                 .padding(10)
-                                .background(Color.white)
+                                .background(Color(.systemBackground))
                                 .clipShape(Circle())
                                 .shadow(radius: 4)
                         }
@@ -69,7 +90,7 @@ struct ContentView: View {
                                 .font(.title2)
                                 .foregroundColor(.pink)
                                 .padding(10)
-                                .background(Color.white)
+                                .background(Color(.systemBackground))
                                 .clipShape(Circle())
                                 .shadow(radius: 4)
                         }
@@ -79,36 +100,12 @@ struct ContentView: View {
 
                 Spacer()
             }
-
-            // 結果表示
-            if !mapViewModel.places.isEmpty {
-                VStack {
-                    Spacer()
-
-                    // スクロール可能な結果リスト
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(mapViewModel.places) { place in
-                                PlaceCardView(place: place)
-                                    .onTapGesture {
-                                        selectedPlace = place
-                                        showDetailView = true
-                                    }
-                            }
-                        }
-                        .padding()
-                    }
-                }
-            }
         }
-        .sheet(isPresented: $showDetailView, onDismiss: {
-            selectedPlace = nil
-        }) {
-            if let selectedPlace = selectedPlace {
-                DetailView(place: selectedPlace)
-                    .environmentObject(authViewModel)
-                    .environmentObject(favoritesViewModel)
-            }
+        // ピンタップ・カードタップの両方からここで詳細を開く
+        .sheet(item: $mapViewModel.selectedPlace) { place in
+            DetailView(place: place)
+                .environmentObject(authViewModel)
+                .environmentObject(favoritesViewModel)
         }
         .sheet(isPresented: $showAccountView) {
             AccountView(
@@ -128,12 +125,32 @@ struct ContentView: View {
         .onChange(of: authViewModel.currentUser) { user in
             favoritesViewModel.setUser(user?.id)
         }
+        // 検索が完了して結果があればパネルを収納し、地図と結果カードを見せる
+        .onChange(of: mapViewModel.isLoading) { isLoading in
+            if !isLoading && !mapViewModel.places.isEmpty {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isPanelExpanded = false
+                }
+            }
+        }
+    }
+
+    /// 現在地からの距離の表示用テキスト（現在地が不明なら nil）
+    private func distanceText(to place: Place) -> String? {
+        guard let user = mapViewModel.userLocation else { return nil }
+        let from = CLLocation(latitude: user.latitude, longitude: user.longitude)
+        let to = CLLocation(latitude: place.latitude, longitude: place.longitude)
+        let meters = from.distance(from: to)
+        return meters < 1000
+            ? String(format: "%.0fm", meters)
+            : String(format: "%.1fkm", meters / 1000)
     }
 }
 
 /// 検索結果のカード表示
 struct PlaceCardView: View {
     let place: Place
+    var distanceText: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -179,10 +196,16 @@ struct PlaceCardView: View {
                 .lineLimit(2)
 
             Spacer()
+
+            if let distanceText = distanceText {
+                Label(distanceText, systemImage: "figure.walk")
+                    .font(.caption2)
+                    .foregroundColor(.blue)
+            }
         }
         .padding(12)
         .frame(width: 160, height: 150)
-        .background(Color.white)
+        .background(Color(.systemBackground))
         .cornerRadius(10)
         .shadow(radius: 4)
     }

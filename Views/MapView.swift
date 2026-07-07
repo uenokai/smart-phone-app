@@ -15,16 +15,21 @@ struct MapView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: MKMapView, context: Context) {
-        // ユーザー位置でマップをセンタリング
-        if let userLocation = viewModel.userLocation {
+        // 初回のみユーザー位置でセンタリング（以降は手動でのパン・ズームを尊重する）
+        if let userLocation = viewModel.userLocation, !context.coordinator.hasCenteredOnUser {
+            context.coordinator.hasCenteredOnUser = true
             let region = MKCoordinateRegion(
                 center: userLocation,
-                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
             )
-            uiView.setRegion(region, animated: true)
+            uiView.setRegion(region, animated: false)
         }
 
-        // 既存のアノテーションを削除
+        // 検索結果が変わったときだけピンを更新する
+        let placeIds = places.map { $0.id }
+        guard placeIds != context.coordinator.lastPlaceIds else { return }
+        context.coordinator.lastPlaceIds = placeIds
+
         uiView.removeAnnotations(uiView.annotations.filter { !($0 is MKUserLocation) })
 
         // 新しいピンを追加（穴場は紫ピンで区別）
@@ -36,11 +41,17 @@ struct MapView: UIViewRepresentable {
             )
             annotation.title = place.name
             annotation.subtitle = place.address
+            annotation.placeId = place.id
             annotation.isHiddenGem = RecommendationEngine.isHiddenGem(place)
             return annotation
         }
 
         uiView.addAnnotations(annotations)
+
+        // 全ピンが収まるようにズームを調整
+        if !annotations.isEmpty {
+            uiView.showAnnotations(annotations, animated: true)
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -49,9 +60,30 @@ struct MapView: UIViewRepresentable {
 
     class Coordinator: NSObject, MKMapViewDelegate {
         let viewModel: MapViewModel
+        var hasCenteredOnUser = false
+        var lastPlaceIds: [String] = []
 
         init(viewModel: MapViewModel) {
             self.viewModel = viewModel
+        }
+
+        /// ピンタップで詳細画面を開く
+        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+            guard let annotation = view.annotation as? PlaceAnnotation else { return }
+            let placeId = annotation.placeId
+            // 選択状態を解除しておかないと同じピンを再タップできない
+            mapView.deselectAnnotation(annotation, animated: false)
+            Task { @MainActor in
+                viewModel.selectPlace(id: placeId)
+            }
+        }
+
+        /// パン・ズーム後の地図中心を記録（「この周辺で検索」の起点になる）
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            let center = mapView.centerCoordinate
+            Task { @MainActor in
+                viewModel.mapCenter = center
+            }
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -71,8 +103,9 @@ struct MapView: UIViewRepresentable {
     }
 }
 
-/// 穴場情報を持たせたカスタムアノテーション
+/// 穴場情報と店IDを持たせたカスタムアノテーション
 class PlaceAnnotation: MKPointAnnotation {
+    var placeId: String = ""
     var isHiddenGem: Bool = false
 }
 

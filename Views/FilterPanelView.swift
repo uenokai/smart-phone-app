@@ -6,6 +6,7 @@ struct FilterPanelView: View {
     @ObservedObject var mapViewModel: MapViewModel
     @ObservedObject var tasteProfileViewModel: TasteProfileViewModel
     @ObservedObject var favoritesViewModel: FavoritesViewModel
+    @Binding var isExpanded: Bool
     @State private var showPresetSheet = false
     @State private var showSavePresetAlert = false
     @State private var showTasteProfileSheet = false
@@ -13,19 +14,40 @@ struct FilterPanelView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // ヘッダー
-            HStack {
-                Text("検索条件")
-                    .font(.headline)
-                Spacer()
-                Button(action: { searchViewModel.resetFilter() }) {
-                    Text("リセット")
+            // ヘッダー（タップで開閉して地図を広く見られる）
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() }
+            }) {
+                HStack {
+                    Image(systemName: "slider.horizontal.3")
+                        .foregroundColor(.blue)
+                    Text("検索条件")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    if !isExpanded {
+                        Text(collapsedSummary)
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    if isExpanded {
+                        Button(action: { searchViewModel.resetFilter() }) {
+                            Text("リセット")
+                                .font(.caption)
+                        }
+                    }
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
                         .font(.caption)
+                        .foregroundColor(.gray)
                 }
             }
+            .buttonStyle(.plain)
             .padding(.horizontal)
             .padding(.top, 12)
+            .padding(.bottom, isExpanded ? 0 : 12)
 
+            if isExpanded {
             ScrollView {
                 VStack(spacing: 12) {
                     // キーワード検索
@@ -183,6 +205,7 @@ struct FilterPanelView: View {
                 .cornerRadius(6)
                 .padding(.horizontal)
             }
+            } // if isExpanded
         }
         .sheet(isPresented: $showPresetSheet) {
             PresetsListView(
@@ -217,6 +240,19 @@ struct FilterPanelView: View {
         case .museum: return "博物館"
         case .park: return "公園"
         }
+    }
+
+    /// 収納時にヘッダーへ表示する現在の検索条件の要約
+    private var collapsedSummary: String {
+        let filter = searchViewModel.currentFilter
+        var parts: [String] = []
+        parts.append(categoryLabel(filter.categories.first ?? .restaurant))
+        parts.append("\(String(format: "%.1f", filter.maxDistance))km")
+        if filter.minRating > 0 {
+            parts.append("★\(String(format: "%.1f", filter.minRating))+")
+        }
+        parts.append(tasteProfileViewModel.summary)
+        return parts.joined(separator: "・")
     }
 }
 
@@ -271,6 +307,7 @@ struct PresetsListView: View {
         searchViewModel: SearchViewModel(),
         mapViewModel: MapViewModel(),
         tasteProfileViewModel: TasteProfileViewModel(),
-        favoritesViewModel: FavoritesViewModel()
+        favoritesViewModel: FavoritesViewModel(),
+        isExpanded: .constant(true)
     )
 }
