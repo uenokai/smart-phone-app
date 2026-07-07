@@ -10,6 +10,7 @@ struct Place: Identifiable, Codable {
     let address: String
     let priceLevel: Int? // 1-4
     let rating: Double? // 0.0-5.0
+    let userRatingsTotal: Int? // 口コミ数（少ないほど「まだ知られていない」場所）
     let openingHours: OpeningHours?
     let website: String?
     let phoneNumber: String?

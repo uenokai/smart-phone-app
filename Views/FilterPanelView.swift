@@ -4,8 +4,10 @@ import SwiftUI
 struct FilterPanelView: View {
     @ObservedObject var searchViewModel: SearchViewModel
     @ObservedObject var mapViewModel: MapViewModel
+    @ObservedObject var tasteProfileViewModel: TasteProfileViewModel
     @State private var showPresetSheet = false
     @State private var showSavePresetAlert = false
+    @State private var showTasteProfileSheet = false
     @State private var presetName = ""
 
     var body: some View {
@@ -101,6 +103,31 @@ struct FilterPanelView: View {
 
                     Divider()
 
+                    // 好みの設定（このアプリの核となる「穴場発見」設定への入口）
+                    Button(action: { showTasteProfileSheet = true }) {
+                        HStack {
+                            Image(systemName: "sparkles")
+                                .foregroundColor(.purple)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("好みの設定")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                                Text(tasteProfileViewModel.summary)
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        .padding(12)
+                        .background(Color.purple.opacity(0.08))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+
                     // アクションボタン
                     HStack(spacing: 12) {
                         Button(action: { showPresetSheet = true }) {
@@ -117,7 +144,10 @@ struct FilterPanelView: View {
                     }
 
                     Button(action: {
-                        searchViewModel.performSearch(with: mapViewModel)
+                        searchViewModel.performSearch(
+                            with: mapViewModel,
+                            profile: tasteProfileViewModel.profile
+                        )
                     }) {
                         HStack {
                             if mapViewModel.isLoading {
@@ -157,6 +187,9 @@ struct FilterPanelView: View {
                 searchViewModel: searchViewModel,
                 isPresented: $showPresetSheet
             )
+        }
+        .sheet(isPresented: $showTasteProfileSheet) {
+            TasteProfileView(tasteProfileViewModel: tasteProfileViewModel)
         }
         .alert("プリセットを保存", isPresented: $showSavePresetAlert) {
             TextField("プリセット名", text: $presetName)
@@ -231,6 +264,7 @@ struct PresetsListView: View {
 #Preview {
     FilterPanelView(
         searchViewModel: SearchViewModel(),
-        mapViewModel: MapViewModel()
+        mapViewModel: MapViewModel(),
+        tasteProfileViewModel: TasteProfileViewModel()
     )
 }

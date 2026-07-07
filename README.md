@@ -2,6 +2,9 @@
 
 GoogleマップやTabelogなどのデータを活用し、地域の飲食店と観光スポットを**複数の条件と個人の好みに基づいてレコメンド**するiOSアプリです。
 
+**このアプリの価値は、メジャーなお店やスポット以外を知れることにあります。**
+「評価は高いのに口コミが少ない＝まだ知られていない良いお店」を独自の穴場スコアで発掘し、💎バッジと紫ピンで提示します。
+
 ## 機能概要
 
 ### コアUI
@@ -17,6 +20,19 @@ GoogleマップやTabelogなどのデータを活用し、地域の飲食店と�
 - ✅ Google Mapsへのリンク
 - ✅ 会員機能（Sign in with Apple）
 - ✅ お気に入り登録（会員限定）
+- ✅ 好みプロファイル（雰囲気タグ・穴場重視度・チェーン店除外）
+- ✅ 穴場スコアリング（💎バッジ・紫ピンで穴場を可視化）
+
+### 好みプロファイルと穴場発見について
+検索パネルの「好みの設定」から、自分の好みを細かく伝えられます：
+
+- **穴場重視度スライダー**：「評価の高さ重視」〜「穴場重視」を調整。穴場側に寄せるほど、評価は高いのに口コミが少ない場所が上位に表示されます
+- **チェーン店除外**：全国チェーンを検索結果から除外（デフォルトON）
+- **口コミ数の上限**：「〜100件」などを設定すると、口コミの多い有名店・観光名所が除外されます
+- **好みの雰囲気タグ**：「隠れ家」「静か」「老舗」「個人経営」など。店名・口コミにタグが含まれる場所を優先します
+- **避けたいものタグ**：「行列」「混雑」「観光客」など。該当する場所は順位が下がります
+
+穴場と判定された場所は、検索結果カードと詳細画面に **💎 穴場** バッジが付き、マップ上では**紫のピン**で表示されます。
 
 ### 会員機能について
 - **未登録でも利用可能**：検索・マップ表示・詳細閲覧は会員登録なしで使えます
@@ -70,22 +86,26 @@ Xcodeで、`LocalRecommendApp.swift`をダブルクリックして開くか、`F
 smart-phone-app/
 ├── Models/
 │   ├── Place.swift              # お店/スポット・検索条件モデル
+│   ├── TasteProfile.swift       # 好みプロファイルモデル
 │   └── User.swift               # 会員モデル
 ├── ViewModels/
 │   ├── MapViewModel.swift       # マップロジック
 │   ├── SearchViewModel.swift    # 検索条件ロジック
+│   ├── TasteProfileViewModel.swift # 好みプロファイル管理
 │   ├── AuthViewModel.swift      # 会員認証（Sign in with Apple）
 │   └── FavoritesViewModel.swift # お気に入り管理（会員限定）
 ├── Views/
 │   ├── ContentView.swift        # メイン画面
-│   ├── MapView.swift            # マップ表示
+│   ├── MapView.swift            # マップ表示（穴場は紫ピン）
 │   ├── FilterPanelView.swift    # 条件指定パネル
+│   ├── TasteProfileView.swift   # 好みの設定画面
 │   ├── DetailView.swift         # 詳細表示（お気に入りボタン付き）
 │   ├── LoginView.swift          # 会員登録・サインイン画面
 │   ├── AccountView.swift        # アカウント画面
 │   └── FavoritesListView.swift  # お気に入り一覧
 ├── Services/
-│   └── GooglePlacesService.swift # Google Places API統合
+│   ├── GooglePlacesService.swift # Google Places API統合
+│   └── RecommendationEngine.swift # 穴場スコアリング・好みマッチング
 ├── LocalRecommendApp.swift      # アプリエントリーポイント
 ├── LocalRecommend.entitlements  # Sign in with Apple 用エンタイトルメント
 ├── Info.plist                   # プロジェクト設定
@@ -115,6 +135,8 @@ smart-phone-app/
 ### Phase 2: UX改善 🔄 (進行中)
 - [x] 会員機能（Sign in with Apple）
 - [x] お気に入り登録・一覧（会員限定）
+- [x] 好みプロファイル（雰囲気タグ・穴場重視度）
+- [x] 穴場スコアリングとバッジ表示
 - [ ] UIの洗練
 - [ ] プリセット保存機能の検証
 - [ ] パフォーマンス最適化

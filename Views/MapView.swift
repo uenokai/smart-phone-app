@@ -10,6 +10,7 @@ struct MapView: UIViewRepresentable {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
         mapView.showsUserLocation = true
+        mapView.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: "PlacePin")
         return mapView
     }
 
@@ -26,15 +27,16 @@ struct MapView: UIViewRepresentable {
         // 既存のアノテーションを削除
         uiView.removeAnnotations(uiView.annotations.filter { !($0 is MKUserLocation) })
 
-        // 新しいピンを追加
-        let annotations = places.map { place -> MKPointAnnotation in
-            let annotation = MKPointAnnotation()
+        // 新しいピンを追加（穴場は紫ピンで区別）
+        let annotations = places.map { place -> PlaceAnnotation in
+            let annotation = PlaceAnnotation()
             annotation.coordinate = CLLocationCoordinate2D(
                 latitude: place.latitude,
                 longitude: place.longitude
             )
             annotation.title = place.name
             annotation.subtitle = place.address
+            annotation.isHiddenGem = RecommendationEngine.isHiddenGem(place)
             return annotation
         }
 
@@ -60,11 +62,18 @@ struct MapView: UIViewRepresentable {
                 for: annotation
             ) as? MKMarkerAnnotationView
 
-            annotationView?.markerTintColor = .systemBlue
-            annotationView?.glyphText = "📍"
+            // 穴場は紫ピン＋💎、それ以外は青ピン
+            let isHiddenGem = (annotation as? PlaceAnnotation)?.isHiddenGem ?? false
+            annotationView?.markerTintColor = isHiddenGem ? .systemPurple : .systemBlue
+            annotationView?.glyphText = isHiddenGem ? "💎" : "📍"
             return annotationView
         }
     }
+}
+
+/// 穴場情報を持たせたカスタムアノテーション
+class PlaceAnnotation: MKPointAnnotation {
+    var isHiddenGem: Bool = false
 }
 
 #Preview {
@@ -80,6 +89,7 @@ struct MapView: UIViewRepresentable {
                 address: "Tokyo, Japan",
                 priceLevel: 2,
                 rating: 4.5,
+                userRatingsTotal: 42,
                 openingHours: nil,
                 website: nil,
                 phoneNumber: nil,

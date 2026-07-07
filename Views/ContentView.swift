@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var searchViewModel = SearchViewModel()
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var favoritesViewModel = FavoritesViewModel()
+    @StateObject private var tasteProfileViewModel = TasteProfileViewModel()
     @State private var selectedPlace: Place? = nil
     @State private var showDetailView = false
     @State private var showAccountView = false
@@ -25,7 +26,8 @@ struct ContentView: View {
                 Spacer()
                 FilterPanelView(
                     searchViewModel: searchViewModel,
-                    mapViewModel: mapViewModel
+                    mapViewModel: mapViewModel,
+                    tasteProfileViewModel: tasteProfileViewModel
                 )
                 .frame(maxHeight: 400)
                 .background(Color.white)
@@ -134,6 +136,18 @@ struct PlaceCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // 穴場バッジ（このアプリの核となる価値の可視化）
+            if RecommendationEngine.isHiddenGem(place) {
+                Text("💎 穴場")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.purple.opacity(0.15))
+                    .foregroundColor(.purple)
+                    .cornerRadius(8)
+            }
+
             Text(place.name)
                 .font(.headline)
                 .lineLimit(2)
@@ -143,6 +157,12 @@ struct PlaceCardView: View {
                     Label("\(String(format: "%.1f", rating))", systemImage: "star.fill")
                         .font(.caption)
                         .foregroundColor(.orange)
+                }
+
+                if let reviews = place.userRatingsTotal {
+                    Text("(\(reviews)件)")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
                 }
 
                 if let priceLevel = place.priceLevel {
@@ -160,7 +180,7 @@ struct PlaceCardView: View {
             Spacer()
         }
         .padding(12)
-        .frame(width: 160, height: 140)
+        .frame(width: 160, height: 150)
         .background(Color.white)
         .cornerRadius(10)
         .shadow(radius: 4)

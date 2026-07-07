@@ -16,10 +16,10 @@ class SearchViewModel: ObservableObject {
         loadPresets()
     }
 
-    /// 現在のフィルター条件で検索実行
-    func performSearch(with mapViewModel: MapViewModel) {
+    /// 現在のフィルター条件と好みプロファイルで検索実行
+    func performSearch(with mapViewModel: MapViewModel, profile: TasteProfile = TasteProfile()) {
         Task {
-            await mapViewModel.searchPlaces(filter: currentFilter)
+            await mapViewModel.searchPlaces(filter: currentFilter, profile: profile)
         }
     }
 

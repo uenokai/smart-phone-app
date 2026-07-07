@@ -31,8 +31,9 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.startUpdatingLocation()
     }
 
-    /// 条件に基づいてお店を検索
-    func searchPlaces(filter: SearchFilter) async {
+    /// 条件と好みプロファイルに基づいてお店を検索
+    /// 取得結果はRecommendationEngineで「穴場度」と好みの一致度により並べ替える
+    func searchPlaces(filter: SearchFilter, profile: TasteProfile = TasteProfile()) async {
         isLoading = true
         error = nil
 
@@ -48,7 +49,11 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 longitude: userLocation.longitude,
                 filter: filter
             )
-            self.places = results
+            let ranked = RecommendationEngine.rank(results, profile: profile)
+            self.places = ranked
+            if ranked.isEmpty && !results.isEmpty {
+                self.error = "好みの条件に合う場所が見つかりませんでした。「好みの設定」を緩めてみてください"
+            }
         } catch {
             self.error = "検索に失敗しました：\(error.localizedDescription)"
         }

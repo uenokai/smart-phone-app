@@ -97,6 +97,7 @@ class GooglePlacesService {
             address: result.vicinity ?? "",
             priceLevel: result.priceLevel,
             rating: result.rating,
+            userRatingsTotal: result.userRatingsTotal,
             openingHours: nil,
             website: nil,
             phoneNumber: nil,
@@ -114,6 +115,7 @@ class GooglePlacesService {
             address: detail.formattedAddress,
             priceLevel: detail.priceLevel,
             rating: detail.rating,
+            userRatingsTotal: detail.userRatingsTotal,
             openingHours: convertOpeningHours(detail.openingHours),
             website: detail.website,
             phoneNumber: detail.formattedPhoneNumber,
@@ -151,6 +153,7 @@ struct PlacesSearchResult: Codable {
     let vicinity: String?
     let types: [String]
     let rating: Double?
+    let userRatingsTotal: Int?
     let priceLevel: Int?
     let openingHours: PlacesOpeningHours?
     let reviews: [PlacesReview]?
@@ -158,6 +161,7 @@ struct PlacesSearchResult: Codable {
     enum CodingKeys: String, CodingKey {
         case placeId = "place_id"
         case name, geometry, vicinity, types, rating
+        case userRatingsTotal = "user_ratings_total"
         case priceLevel = "price_level"
         case openingHours = "opening_hours"
         case reviews
@@ -175,6 +179,7 @@ struct PlaceDetail: Codable {
     let formattedAddress: String
     let types: [String]
     let rating: Double?
+    let userRatingsTotal: Int?
     let priceLevel: Int?
     let openingHours: PlaceOpeningHours?
     let website: String?
@@ -186,6 +191,7 @@ struct PlaceDetail: Codable {
         case name, geometry
         case formattedAddress = "formatted_address"
         case types, rating
+        case userRatingsTotal = "user_ratings_total"
         case priceLevel = "price_level"
         case openingHours = "opening_hours"
         case website

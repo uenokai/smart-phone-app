@@ -1,0 +1,134 @@
+import SwiftUI
+
+/// 好みプロファイル設定画面
+/// 「メジャーな場所以外を知りたい」度合いや好みの雰囲気を細かく伝えられる
+struct TasteProfileView: View {
+    @ObservedObject var tasteProfileViewModel: TasteProfileViewModel
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationView {
+            Form {
+                // 穴場重視度
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("評価の高さ重視")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text("穴場重視")
+                                .font(.caption)
+                                .foregroundColor(.purple)
+                        }
+                        Slider(
+                            value: $tasteProfileViewModel.profile.hiddenGemWeight,
+                            in: 0.0...1.0,
+                            step: 0.1
+                        )
+                        Text(hiddenGemWeightDescription)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Label("穴場度", systemImage: "sparkles")
+                } footer: {
+                    Text("「穴場重視」に寄せるほど、評価は高いのに口コミが少ない＝まだ知られていないお店やスポットが上位に表示されます。")
+                }
+
+                // メジャーな場所の除外
+                Section {
+                    Toggle("チェーン店を除外", isOn: $tasteProfileViewModel.profile.excludeChains)
+
+                    Picker("口コミ数の上限", selection: $tasteProfileViewModel.profile.maxReviewCount) {
+                        Text("こだわらない").tag(Int?.none)
+                        ForEach(TasteProfile.maxReviewCountOptions.compactMap { $0 }, id: \.self) { count in
+                            Text("〜\(count)件").tag(Int?.some(count))
+                        }
+                    }
+                } header: {
+                    Label("メジャーな場所の除外", systemImage: "person.3.slash")
+                } footer: {
+                    Text("口コミ数の上限を設定すると、それ以上口コミがある「有名な場所」が検索結果から除外されます。")
+                }
+
+                // 好みの雰囲気タグ
+                Section {
+                    TagGridView(
+                        tags: TasteProfile.moodTagOptions,
+                        selectedTags: tasteProfileViewModel.profile.moodTags,
+                        selectedColor: .purple
+                    ) { tag in
+                        tasteProfileViewModel.toggleMoodTag(tag)
+                    }
+                } header: {
+                    Label("好みの雰囲気", systemImage: "heart.text.square")
+                } footer: {
+                    Text("選んだタグが店名や口コミに含まれるお店を優先します。")
+                }
+
+                // 避けたいタグ
+                Section {
+                    TagGridView(
+                        tags: TasteProfile.avoidTagOptions,
+                        selectedTags: tasteProfileViewModel.profile.avoidTags,
+                        selectedColor: .red
+                    ) { tag in
+                        tasteProfileViewModel.toggleAvoidTag(tag)
+                    }
+                } header: {
+                    Label("避けたいもの", systemImage: "hand.raised")
+                }
+            }
+            .navigationTitle("好みの設定")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完了") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var hiddenGemWeightDescription: String {
+        let weight = tasteProfileViewModel.profile.hiddenGemWeight
+        switch weight {
+        case 0.0..<0.3: return "定番の人気店を中心に表示します"
+        case 0.3..<0.7: return "人気店と穴場をバランスよく表示します"
+        default: return "まだ知られていない穴場を優先して表示します"
+        }
+    }
+}
+
+/// タグ選択用のチップグリッド
+struct TagGridView: View {
+    let tags: [String]
+    let selectedTags: [String]
+    let selectedColor: Color
+    let onTap: (String) -> Void
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8)], spacing: 8) {
+            ForEach(tags, id: \.self) { tag in
+                let isSelected = selectedTags.contains(tag)
+                Button(action: { onTap(tag) }) {
+                    Text(tag)
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .background(isSelected ? selectedColor : Color.gray.opacity(0.15))
+                        .foregroundColor(isSelected ? .white : .primary)
+                        .cornerRadius(16)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+#Preview {
+    TasteProfileView(tasteProfileViewModel: TasteProfileViewModel())
+}

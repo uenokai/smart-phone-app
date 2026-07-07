@@ -36,13 +36,30 @@ struct DetailView: View {
                         }
 
                         HStack(spacing: 12) {
-                            // 評価
+                            // 穴場バッジ
+                            if RecommendationEngine.isHiddenGem(place) {
+                                Text("💎 穴場")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color.purple.opacity(0.15))
+                                    .foregroundColor(.purple)
+                                    .cornerRadius(8)
+                            }
+
+                            // 評価と口コミ数
                             if let rating = place.rating {
                                 HStack(spacing: 4) {
                                     Image(systemName: "star.fill")
                                         .foregroundColor(.yellow)
                                     Text(String(format: "%.1f", rating))
                                         .font(.caption)
+                                    if let reviews = place.userRatingsTotal {
+                                        Text("(口コミ\(reviews)件)")
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                    }
                                 }
                             }
 
@@ -240,6 +257,7 @@ struct DetailView: View {
             address: "Tokyo, Japan",
             priceLevel: 2,
             rating: 4.5,
+            userRatingsTotal: 42,
             openingHours: OpeningHours(
                 isOpen: true,
                 weekday: ["月 11:00-23:00", "火 11:00-23:00"],
