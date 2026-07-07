@@ -107,8 +107,15 @@ class GooglePlacesService {
             URLQueryItem(name: "radius", value: "\(Int(filter.maxDistance * 1000))"),
             URLQueryItem(name: "key", value: apiKey),
             URLQueryItem(name: "language", value: "ja"),
-            URLQueryItem(name: "type", value: filter.categories.first?.rawValue ?? "restaurant")
+            URLQueryItem(name: "type", value: filter.categories.first?.rawValue ?? "restaurant"),
+            // Google の price_level は 0〜4、アプリのUIは 1〜4（0=無料は範囲に含める）
+            URLQueryItem(name: "minprice", value: "\(max(0, filter.minPriceLevel - 1))"),
+            URLQueryItem(name: "maxprice", value: "\(min(4, filter.maxPriceLevel))")
         ]
+
+        if filter.includeOpen {
+            queryItems.append(URLQueryItem(name: "opennow", value: "true"))
+        }
 
         if !filter.name.isEmpty {
             queryItems.append(URLQueryItem(name: "keyword", value: filter.name))
@@ -129,7 +136,9 @@ class GooglePlacesService {
             priceLevel: result.priceLevel,
             rating: result.rating,
             userRatingsTotal: result.userRatingsTotal,
-            openingHours: nil,
+            openingHours: result.openingHours?.openNow.map {
+                OpeningHours(isOpen: $0, weekday: nil, nextOpeningTime: nil, nextClosingTime: nil)
+            },
             website: nil,
             phoneNumber: nil,
             reviews: result.reviews?.map { $0.text }

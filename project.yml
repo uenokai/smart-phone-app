@@ -1,0 +1,57 @@
+# XcodeGen 設定ファイル
+# 使い方: brew install xcodegen && xcodegen generate
+# 生成された LocalRecommend.xcodeproj を Xcode で開いてビルドする
+name: LocalRecommend
+options:
+  bundleIdPrefix: com.localrecommend
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  LocalRecommend:
+    type: application
+    platform: iOS
+    sources:
+      - LocalRecommendApp.swift
+      - Models
+      - ViewModels
+      - Views
+      - Services
+    settings:
+      base:
+        INFOPLIST_FILE: Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.localrecommend.app
+        CODE_SIGN_ENTITLEMENTS: LocalRecommend.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_PREVIEWS: YES
+
+  LocalRecommendTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: LocalRecommend
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.localrecommend.app.tests
+
+schemes:
+  LocalRecommend:
+    build:
+      targets:
+        LocalRecommend: all
+        LocalRecommendTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - LocalRecommendTests

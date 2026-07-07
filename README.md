@@ -52,16 +52,19 @@ Nearby Searchは口コミ本文を返さないため、検索は2段階で行い
 
 ## セットアップ手順
 
-### 1. Xcodeでプロジェクトを開く
+### 1. Xcodeプロジェクトを生成する
 
-Mac上でXcodeをインストール後、このリポジトリをクローンしてください。
+このリポジトリは [XcodeGen](https://github.com/yonaskolb/XcodeGen) でプロジェクトファイルを生成します（`.xcodeproj`はコミットしません）。
 
 ```bash
 git clone <repository-url>
 cd smart-phone-app
+brew install xcodegen   # 未インストールの場合
+xcodegen generate
+open LocalRecommend.xcodeproj
 ```
 
-Xcodeで、`LocalRecommendApp.swift`をダブルクリックして開くか、`File > Open`から選択してください。
+アプリ本体（LocalRecommend）とユニットテスト（LocalRecommendTests）のターゲット・スキームが自動生成されます。
 
 ### 2. Google Places APIキーを取得
 
@@ -90,6 +93,19 @@ Xcodeで、`LocalRecommendApp.swift`をダブルクリックして開くか、`F
 
 アプリを起動後、位置情報へのアクセスを許可してください。
 
+### 6. ユニットテストの実行
+
+Xcodeで `Cmd + U`、またはコマンドラインから：
+
+```bash
+xcodebuild test -scheme LocalRecommend -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+テスト対象：
+- `RecommendationEngineTests`：穴場スコア・チェーン判定・ランキング・タグ加点
+- `SearchFilterTests`：価格帯・最低評価・営業中フィルターの判定
+- `FavoritesLearningTests`：お気に入りからの好み自動学習
+
 ## ファイル構成
 
 ```
@@ -116,6 +132,11 @@ smart-phone-app/
 ├── Services/
 │   ├── GooglePlacesService.swift # Google Places API統合
 │   └── RecommendationEngine.swift # 穴場スコアリング・好みマッチング
+├── Tests/
+│   ├── RecommendationEngineTests.swift # エンジンのユニットテスト
+│   ├── SearchFilterTests.swift  # フィルター判定のテスト
+│   └── FavoritesLearningTests.swift # 好み自動学習のテスト
+├── project.yml                  # XcodeGen 設定（.xcodeproj生成用）
 ├── LocalRecommendApp.swift      # アプリエントリーポイント
 ├── LocalRecommend.entitlements  # Sign in with Apple 用エンタイトルメント
 ├── Info.plist                   # プロジェクト設定
@@ -149,10 +170,11 @@ smart-phone-app/
 - [x] 穴場スコアリングとバッジ表示
 - [x] お気に入りからの好み自動学習
 - [x] Details APIによる口コミ本文の取得（2段階検索）
+- [x] 価格帯・最低評価・営業中フィルターの適用（API+クライアント側）
+- [x] XcodeGenによるプロジェクト生成対応
+- [x] ユニットテスト（エンジン・フィルター・学習ロジック）
 - [ ] UIの洗練
-- [ ] プリセット保存機能の検証
 - [ ] パフォーマンス最適化
-- [ ] エラーハンドリング強化
 
 ### Phase 3: 観光スポット対応 📋
 - [ ] 観光スポット用フィルタリング

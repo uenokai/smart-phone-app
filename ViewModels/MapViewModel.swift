@@ -55,12 +55,19 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 longitude: userLocation.longitude,
                 filter: filter
             )
-            let preliminary = RecommendationEngine.rank(results, profile: profile, learnedTags: learnedTags)
+            // APIが対応していない条件（最低評価など）をクライアント側で絞り込む
+            let filtered = results.filter { filter.matches($0) }
+            let preliminary = RecommendationEngine.rank(filtered, profile: profile, learnedTags: learnedTags)
             let enriched = await googlePlacesService.enrichPlacesWithDetails(preliminary)
-            let ranked = RecommendationEngine.rank(enriched, profile: profile, learnedTags: learnedTags)
+            // 詳細取得で営業時間などが判明した店を再度絞り込んでから最終ランキング
+            let ranked = RecommendationEngine.rank(
+                enriched.filter { filter.matches($0) },
+                profile: profile,
+                learnedTags: learnedTags
+            )
             self.places = ranked
             if ranked.isEmpty && !results.isEmpty {
-                self.error = "好みの条件に合う場所が見つかりませんでした。「好みの設定」を緩めてみてください"
+                self.error = "条件に合う場所が見つかりませんでした。検索条件や「好みの設定」を緩めてみてください"
             }
         } catch {
             self.error = "検索に失敗しました：\(error.localizedDescription)"

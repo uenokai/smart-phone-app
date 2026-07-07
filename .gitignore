@@ -1,4 +1,6 @@
 # Xcode
+# .xcodeproj は XcodeGen (project.yml) から生成するためコミットしない
+*.xcodeproj/
 build/
 *.pbxuser
 *.mode1v3

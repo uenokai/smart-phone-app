@@ -51,3 +51,22 @@ struct SearchFilter: Codable {
         case name = "name"
     }
 }
+
+extension SearchFilter {
+    /// 取得済みデータに対して適用するクライアント側フィルター
+    /// （Nearby Search APIだけでは絞り込めない条件をここで判定する）
+    /// 情報が欠落している場合（価格・評価・営業時間が不明）は除外しない
+    func matches(_ place: Place) -> Bool {
+        if let priceLevel = place.priceLevel,
+           priceLevel < minPriceLevel || priceLevel > maxPriceLevel {
+            return false
+        }
+        if minRating > 0, let rating = place.rating, rating < minRating {
+            return false
+        }
+        if includeOpen, let hours = place.openingHours, !hours.isOpen {
+            return false
+        }
+        return true
+    }
+}
