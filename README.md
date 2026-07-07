@@ -15,6 +15,14 @@ GoogleマップやTabelogなどのデータを活用し、地域の飲食店と�
 - ✅ Google口コミ・食べログ評価の表示
 - ✅ 条件プリセットの保存・読み込み
 - ✅ Google Mapsへのリンク
+- ✅ 会員機能（Sign in with Apple）
+- ✅ お気に入り登録（会員限定）
+
+### 会員機能について
+- **未登録でも利用可能**：検索・マップ表示・詳細閲覧は会員登録なしで使えます
+- **お気に入りは会員限定**：お店やスポットのお気に入り登録にはサインイン（無料）が必要です
+- 認証には **Sign in with Apple** を採用（メールアドレス・パスワード不要）
+- お気に入りは会員IDごとに端末内に保存されます
 
 ## セットアップ手順
 
@@ -61,21 +69,39 @@ Xcodeで、`LocalRecommendApp.swift`をダブルクリックして開くか、`F
 ```
 smart-phone-app/
 ├── Models/
-│   └── Place.swift              # データモデル
+│   ├── Place.swift              # お店/スポット・検索条件モデル
+│   └── User.swift               # 会員モデル
 ├── ViewModels/
 │   ├── MapViewModel.swift       # マップロジック
-│   └── SearchViewModel.swift    # 検索条件ロジック
+│   ├── SearchViewModel.swift    # 検索条件ロジック
+│   ├── AuthViewModel.swift      # 会員認証（Sign in with Apple）
+│   └── FavoritesViewModel.swift # お気に入り管理（会員限定）
 ├── Views/
 │   ├── ContentView.swift        # メイン画面
 │   ├── MapView.swift            # マップ表示
 │   ├── FilterPanelView.swift    # 条件指定パネル
-│   └── DetailView.swift         # 詳細表示
+│   ├── DetailView.swift         # 詳細表示（お気に入りボタン付き）
+│   ├── LoginView.swift          # 会員登録・サインイン画面
+│   ├── AccountView.swift        # アカウント画面
+│   └── FavoritesListView.swift  # お気に入り一覧
 ├── Services/
 │   └── GooglePlacesService.swift # Google Places API統合
 ├── LocalRecommendApp.swift      # アプリエントリーポイント
+├── LocalRecommend.entitlements  # Sign in with Apple 用エンタイトルメント
 ├── Info.plist                   # プロジェクト設定
 └── README.md                    # このファイル
 ```
+
+### Sign in with Apple のセットアップ
+
+会員機能を動かすには、Xcode側で以下の設定が必要です：
+
+1. Xcodeでターゲットの **Signing & Capabilities** を開く
+2. **+ Capability** から **Sign in with Apple** を追加
+3. `LocalRecommend.entitlements` がターゲットに紐付いていることを確認
+4. Apple Developer Program のチームで署名（実機テスト時）
+
+※ シミュレーターでもApple IDでサインインしていればテスト可能です。
 
 ## 開発進捗
 
@@ -87,6 +113,8 @@ smart-phone-app/
 - [x] マップ上にピン表示
 
 ### Phase 2: UX改善 🔄 (進行中)
+- [x] 会員機能（Sign in with Apple）
+- [x] お気に入り登録・一覧（会員限定）
 - [ ] UIの洗練
 - [ ] プリセット保存機能の検証
 - [ ] パフォーマンス最適化

@@ -4,8 +4,12 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var mapViewModel = MapViewModel()
     @StateObject private var searchViewModel = SearchViewModel()
+    @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var favoritesViewModel = FavoritesViewModel()
     @State private var selectedPlace: Place? = nil
     @State private var showDetailView = false
+    @State private var showAccountView = false
+    @State private var showFavoritesView = false
 
     var body: some View {
         ZStack {
@@ -30,20 +34,52 @@ struct ContentView: View {
             }
             .ignoresSafeArea(.keyboard)
 
-            // 結果表示
-            if !mapViewModel.places.isEmpty {
-                VStack {
-                    HStack {
+            // 上部バー（検索結果件数 + アカウント / お気に入りボタン）
+            VStack {
+                HStack(alignment: .top) {
+                    if !mapViewModel.places.isEmpty {
                         Text("検索結果：\(mapViewModel.places.count)件")
                             .font(.caption)
                             .padding(8)
                             .background(Color.blue)
                             .foregroundColor(.white)
                             .cornerRadius(6)
-                        Spacer()
                     }
-                    .padding()
 
+                    Spacer()
+
+                    VStack(spacing: 10) {
+                        // アカウントボタン
+                        Button(action: { showAccountView = true }) {
+                            Image(systemName: authViewModel.isSignedIn ? "person.crop.circle.fill" : "person.crop.circle")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                                .padding(10)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+
+                        // お気に入りボタン
+                        Button(action: { showFavoritesView = true }) {
+                            Image(systemName: "heart.fill")
+                                .font(.title2)
+                                .foregroundColor(.pink)
+                                .padding(10)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+                    }
+                }
+                .padding()
+
+                Spacer()
+            }
+
+            // 結果表示
+            if !mapViewModel.places.isEmpty {
+                VStack {
                     Spacer()
 
                     // スクロール可能な結果リスト
@@ -67,7 +103,27 @@ struct ContentView: View {
         }) {
             if let selectedPlace = selectedPlace {
                 DetailView(place: selectedPlace)
+                    .environmentObject(authViewModel)
+                    .environmentObject(favoritesViewModel)
             }
+        }
+        .sheet(isPresented: $showAccountView) {
+            AccountView(
+                authViewModel: authViewModel,
+                favoritesViewModel: favoritesViewModel
+            )
+        }
+        .sheet(isPresented: $showFavoritesView) {
+            FavoritesListView(
+                favoritesViewModel: favoritesViewModel,
+                authViewModel: authViewModel
+            )
+        }
+        .onAppear {
+            favoritesViewModel.setUser(authViewModel.currentUser?.id)
+        }
+        .onChange(of: authViewModel.currentUser) { user in
+            favoritesViewModel.setUser(user?.id)
         }
     }
 }

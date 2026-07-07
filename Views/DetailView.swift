@@ -4,6 +4,9 @@ import SwiftUI
 struct DetailView: View {
     let place: Place
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var favoritesViewModel: FavoritesViewModel
+    @State private var showLoginSheet = false
 
     var body: some View {
         NavigationView {
@@ -11,9 +14,26 @@ struct DetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     // ヘッダー
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(place.name)
-                            .font(.title2)
-                            .fontWeight(.bold)
+                        HStack(alignment: .top) {
+                            Text(place.name)
+                                .font(.title2)
+                                .fontWeight(.bold)
+
+                            Spacer()
+
+                            // お気に入りボタン（会員限定機能）
+                            Button(action: {
+                                if authViewModel.isSignedIn {
+                                    favoritesViewModel.toggleFavorite(place)
+                                } else {
+                                    showLoginSheet = true
+                                }
+                            }) {
+                                Image(systemName: favoritesViewModel.isFavorite(place) ? "heart.fill" : "heart")
+                                    .font(.title2)
+                                    .foregroundColor(.pink)
+                            }
+                        }
 
                         HStack(spacing: 12) {
                             // 評価
@@ -180,6 +200,9 @@ struct DetailView: View {
                     Button("閉じる") { dismiss() }
                 }
             }
+            .sheet(isPresented: $showLoginSheet) {
+                LoginView(authViewModel: authViewModel)
+            }
         }
     }
 
@@ -228,4 +251,6 @@ struct DetailView: View {
             reviews: ["美味しいお店です", "雰囲気がいい"]
         )
     )
+    .environmentObject(AuthViewModel())
+    .environmentObject(FavoritesViewModel())
 }
