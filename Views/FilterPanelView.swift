@@ -5,6 +5,7 @@ struct FilterPanelView: View {
     @ObservedObject var searchViewModel: SearchViewModel
     @ObservedObject var mapViewModel: MapViewModel
     @ObservedObject var tasteProfileViewModel: TasteProfileViewModel
+    @ObservedObject var favoritesViewModel: FavoritesViewModel
     @State private var showPresetSheet = false
     @State private var showSavePresetAlert = false
     @State private var showTasteProfileSheet = false
@@ -146,7 +147,8 @@ struct FilterPanelView: View {
                     Button(action: {
                         searchViewModel.performSearch(
                             with: mapViewModel,
-                            profile: tasteProfileViewModel.profile
+                            profile: tasteProfileViewModel.profile,
+                            learnedTags: favoritesViewModel.learnedMoodTags
                         )
                     }) {
                         HStack {
@@ -189,7 +191,10 @@ struct FilterPanelView: View {
             )
         }
         .sheet(isPresented: $showTasteProfileSheet) {
-            TasteProfileView(tasteProfileViewModel: tasteProfileViewModel)
+            TasteProfileView(
+                tasteProfileViewModel: tasteProfileViewModel,
+                learnedTags: favoritesViewModel.learnedMoodTags
+            )
         }
         .alert("プリセットを保存", isPresented: $showSavePresetAlert) {
             TextField("プリセット名", text: $presetName)
@@ -265,6 +270,7 @@ struct PresetsListView: View {
     FilterPanelView(
         searchViewModel: SearchViewModel(),
         mapViewModel: MapViewModel(),
-        tasteProfileViewModel: TasteProfileViewModel()
+        tasteProfileViewModel: TasteProfileViewModel(),
+        favoritesViewModel: FavoritesViewModel()
     )
 }

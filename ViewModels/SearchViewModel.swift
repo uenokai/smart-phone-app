@@ -17,9 +17,18 @@ class SearchViewModel: ObservableObject {
     }
 
     /// 現在のフィルター条件と好みプロファイルで検索実行
-    func performSearch(with mapViewModel: MapViewModel, profile: TasteProfile = TasteProfile()) {
+    /// learnedTags はお気に入りの傾向から自動学習したタグ
+    func performSearch(
+        with mapViewModel: MapViewModel,
+        profile: TasteProfile = TasteProfile(),
+        learnedTags: [String] = []
+    ) {
         Task {
-            await mapViewModel.searchPlaces(filter: currentFilter, profile: profile)
+            await mapViewModel.searchPlaces(
+                filter: currentFilter,
+                profile: profile,
+                learnedTags: learnedTags
+            )
         }
     }
 

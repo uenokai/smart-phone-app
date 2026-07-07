@@ -33,6 +33,25 @@ class FavoritesViewModel: ObservableObject {
         persistFavorites()
     }
 
+    /// お気に入りの傾向から自動学習した雰囲気タグ
+    /// 2件以上のお気に入りの店名・口コミに共通して現れるタグを「好みの傾向」と見なす
+    var learnedMoodTags: [String] {
+        guard favorites.count >= 2 else { return [] }
+
+        var counts: [String: Int] = [:]
+        for place in favorites {
+            let text = ([place.name] + (place.reviews ?? [])).joined(separator: " ")
+            for tag in TasteProfile.moodTagOptions where text.contains(tag) {
+                counts[tag, default: 0] += 1
+            }
+        }
+
+        return counts
+            .filter { $0.value >= 2 }
+            .sorted { $0.value > $1.value }
+            .map { $0.key }
+    }
+
     // MARK: - Private Methods
 
     private var storageKey: String? {

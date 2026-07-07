@@ -40,7 +40,8 @@ struct RecommendationEngine {
     }
 
     /// 好みプロファイルとの一致度で総合スコアを計算
-    static func score(_ place: Place, profile: TasteProfile) -> Double {
+    /// learnedTags はお気に入りの傾向から自動学習したタグ（明示指定より弱めに加点）
+    static func score(_ place: Place, profile: TasteProfile, learnedTags: [String] = []) -> Double {
         var score = 0.0
 
         // 基本評価と穴場度を、穴場重視度に応じてブレンド
@@ -53,6 +54,10 @@ struct RecommendationEngine {
         let text = ([place.name] + (place.reviews ?? [])).joined(separator: " ")
         for tag in profile.moodTags where text.contains(tag) {
             score += 0.15
+        }
+        // 自動学習タグ（ユーザーが明示的に選んだタグと重複するものは除く）
+        for tag in learnedTags where !profile.moodTags.contains(tag) && text.contains(tag) {
+            score += 0.1
         }
         for tag in profile.avoidTags where text.contains(tag) {
             score -= 0.3
@@ -67,7 +72,7 @@ struct RecommendationEngine {
     }
 
     /// プロファイルに基づいて検索結果を絞り込み＆並べ替え
-    static func rank(_ places: [Place], profile: TasteProfile) -> [Place] {
+    static func rank(_ places: [Place], profile: TasteProfile, learnedTags: [String] = []) -> [Place] {
         places
             .filter { place in
                 if profile.excludeChains && isLikelyChain(place) {
@@ -80,6 +85,9 @@ struct RecommendationEngine {
                 }
                 return true
             }
-            .sorted { score($0, profile: profile) > score($1, profile: profile) }
+            .sorted {
+                score($0, profile: profile, learnedTags: learnedTags) >
+                score($1, profile: profile, learnedTags: learnedTags)
+            }
     }
 }

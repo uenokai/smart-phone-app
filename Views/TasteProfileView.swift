@@ -4,6 +4,8 @@ import SwiftUI
 /// 「メジャーな場所以外を知りたい」度合いや好みの雰囲気を細かく伝えられる
 struct TasteProfileView: View {
     @ObservedObject var tasteProfileViewModel: TasteProfileViewModel
+    /// お気に入りの傾向から自動学習したタグ（表示のみ・検索時に自動で考慮される）
+    var learnedTags: [String] = []
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
@@ -79,6 +81,33 @@ struct TasteProfileView: View {
                     }
                 } header: {
                     Label("避けたいもの", systemImage: "hand.raised")
+                }
+
+                // お気に入りから自動学習した傾向
+                if !learnedTags.isEmpty {
+                    Section {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8)], spacing: 8) {
+                            ForEach(learnedTags, id: \.self) { tag in
+                                Text(tag)
+                                    .font(.caption)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.purple.opacity(0.08))
+                                    .foregroundColor(.purple)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color.purple.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                    )
+                                    .cornerRadius(16)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Label("あなたの傾向（自動学習）", systemImage: "wand.and.stars")
+                    } footer: {
+                        Text("お気に入りに登録した場所に共通する雰囲気から自動で学習したタグです。検索時に自動的に考慮されます。")
+                    }
                 }
             }
             .navigationTitle("好みの設定")

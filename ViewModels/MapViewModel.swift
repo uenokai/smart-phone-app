@@ -32,8 +32,14 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     /// 条件と好みプロファイルに基づいてお店を検索
-    /// 取得結果はRecommendationEngineで「穴場度」と好みの一致度により並べ替える
-    func searchPlaces(filter: SearchFilter, profile: TasteProfile = TasteProfile()) async {
+    /// 1. Nearby Searchで候補を取得し一次ランキング
+    /// 2. 上位の候補にDetails APIで口コミ本文などを付加
+    /// 3. 口コミテキストを使って好みタグ・学習タグで最終ランキング
+    func searchPlaces(
+        filter: SearchFilter,
+        profile: TasteProfile = TasteProfile(),
+        learnedTags: [String] = []
+    ) async {
         isLoading = true
         error = nil
 
@@ -49,7 +55,9 @@ class MapViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 longitude: userLocation.longitude,
                 filter: filter
             )
-            let ranked = RecommendationEngine.rank(results, profile: profile)
+            let preliminary = RecommendationEngine.rank(results, profile: profile, learnedTags: learnedTags)
+            let enriched = await googlePlacesService.enrichPlacesWithDetails(preliminary)
+            let ranked = RecommendationEngine.rank(enriched, profile: profile, learnedTags: learnedTags)
             self.places = ranked
             if ranked.isEmpty && !results.isEmpty {
                 self.error = "好みの条件に合う場所が見つかりませんでした。「好みの設定」を緩めてみてください"

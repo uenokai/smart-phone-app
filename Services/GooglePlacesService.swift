@@ -42,22 +42,52 @@ class GooglePlacesService {
         return searchResult.results.map { convertToPlace($0) }
     }
 
-    /// お店の詳細情報を取得
+    /// お店の詳細情報を取得（口コミ本文・営業時間・連絡先を含む）
     func getPlaceDetails(placeId: String) async throws -> Place {
         guard !apiKey.isEmpty else {
             throw PlacesAPIError.missingAPIKey
         }
 
-        let urlString = "\(baseURL)/details/json?place_id=\(placeId)&key=\(apiKey)"
+        // fields指定でAPI課金を抑えつつ、口コミ本文まで取得する
+        let fields = "place_id,name,geometry,formatted_address,types,rating,user_ratings_total,price_level,opening_hours,website,formatted_phone_number,reviews"
+        let urlString = "\(baseURL)/details/json?place_id=\(placeId)&fields=\(fields)&language=ja&key=\(apiKey)"
 
         guard let url = URL(string: urlString) else {
             throw PlacesAPIError.invalidURL
         }
 
-        let (data, _) = try await session.data(from: url)
-        let response = try JSONDecoder().decode(PlaceDetailsResponse.self, from: data)
+        let (data, response) = try await session.data(from: url)
 
-        return convertDetailToPlace(response.result)
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw PlacesAPIError.invalidResponse
+        }
+
+        let decoded = try JSONDecoder().decode(PlaceDetailsResponse.self, from: data)
+        return convertDetailToPlace(decoded.result)
+    }
+
+    /// 検索結果の上位に詳細情報（口コミ本文など）を付加する
+    /// Details APIの呼び出し回数を抑えるため上位のみを対象とし、
+    /// 取得に失敗した場合は元の情報をそのまま使う
+    func enrichPlacesWithDetails(_ places: [Place], limit: Int = 15) async -> [Place] {
+        var enriched = places
+        await withTaskGroup(of: (Int, Place)?.self) { group in
+            for (index, place) in places.prefix(limit).enumerated() {
+                group.addTask {
+                    guard let detail = try? await self.getPlaceDetails(placeId: place.id) else {
+                        return nil
+                    }
+                    return (index, self.merge(original: place, detail: detail))
+                }
+            }
+            for await result in group {
+                if let (index, place) = result {
+                    enriched[index] = place
+                }
+            }
+        }
+        return enriched
     }
 
     // MARK: - Private Methods
@@ -76,6 +106,7 @@ class GooglePlacesService {
             URLQueryItem(name: "location", value: "\(latitude),\(longitude)"),
             URLQueryItem(name: "radius", value: "\(Int(filter.maxDistance * 1000))"),
             URLQueryItem(name: "key", value: apiKey),
+            URLQueryItem(name: "language", value: "ja"),
             URLQueryItem(name: "type", value: filter.categories.first?.rawValue ?? "restaurant")
         ]
 
@@ -112,7 +143,7 @@ class GooglePlacesService {
             category: Place.PlaceCategory(rawValue: detail.types.first ?? "") ?? .restaurant,
             latitude: detail.geometry.location.lat,
             longitude: detail.geometry.location.lng,
-            address: detail.formattedAddress,
+            address: detail.formattedAddress ?? "",
             priceLevel: detail.priceLevel,
             rating: detail.rating,
             userRatingsTotal: detail.userRatingsTotal,
@@ -120,6 +151,25 @@ class GooglePlacesService {
             website: detail.website,
             phoneNumber: detail.formattedPhoneNumber,
             reviews: detail.reviews?.map { $0.text }
+        )
+    }
+
+    /// Nearby Searchの結果をベースに、Details APIで取れた情報を上書きマージする
+    private func merge(original: Place, detail: Place) -> Place {
+        return Place(
+            id: original.id,
+            name: detail.name.isEmpty ? original.name : detail.name,
+            category: original.category,
+            latitude: original.latitude,
+            longitude: original.longitude,
+            address: detail.address.isEmpty ? original.address : detail.address,
+            priceLevel: detail.priceLevel ?? original.priceLevel,
+            rating: detail.rating ?? original.rating,
+            userRatingsTotal: detail.userRatingsTotal ?? original.userRatingsTotal,
+            openingHours: detail.openingHours ?? original.openingHours,
+            website: detail.website ?? original.website,
+            phoneNumber: detail.phoneNumber ?? original.phoneNumber,
+            reviews: detail.reviews ?? original.reviews
         )
     }
 
@@ -176,7 +226,7 @@ struct PlaceDetail: Codable {
     let placeId: String
     let name: String
     let geometry: PlacesGeometry
-    let formattedAddress: String
+    let formattedAddress: String?
     let types: [String]
     let rating: Double?
     let userRatingsTotal: Int?

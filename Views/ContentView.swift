@@ -27,7 +27,8 @@ struct ContentView: View {
                 FilterPanelView(
                     searchViewModel: searchViewModel,
                     mapViewModel: mapViewModel,
-                    tasteProfileViewModel: tasteProfileViewModel
+                    tasteProfileViewModel: tasteProfileViewModel,
+                    favoritesViewModel: favoritesViewModel
                 )
                 .frame(maxHeight: 400)
                 .background(Color.white)
