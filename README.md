@@ -98,7 +98,7 @@ open LocalRecommend.xcodeproj
 Xcodeで `Cmd + U`、またはコマンドラインから：
 
 ```bash
-xcodebuild test -scheme LocalRecommend -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -scheme LocalRecommend -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
 テスト対象：
