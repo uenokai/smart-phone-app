@@ -179,6 +179,7 @@ smart-phone-app/
 - [x] 検索後は全ピンが収まるよう自動ズーム
 - [x] ダークモード対応
 - [x] 結果カードに現在地からの距離表示
+- [x] GitHub Actions CI（Macなしでもビルド・テストを自動確認）
 - [ ] パフォーマンス最適化
 
 ### Phase 3: 観光スポット対応 📋
@@ -194,6 +195,17 @@ smart-phone-app/
 - **外部API**：Google Places API
 - **ストレージ**：CoreData (将来実装)
 - **最小iOS**：iOS 15.0+
+
+## Macを持っていない場合
+
+このリポジトリには GitHub Actions のCI（`.github/workflows/ci.yml`）を設定済みです。ブランチにプッシュするたびに、macOSランナー上で自動的に以下が実行されます：
+
+1. `xcodegen generate` でXcodeプロジェクトを生成
+2. `xcodebuild test` でビルド＆ユニットテストを実行
+
+GitHubリポジトリの **Actions** タブから結果（緑✅ / 赤❌）を確認できるため、Macを持っていなくても「コードが壊れていないか」は継続的に確認できます。
+
+ただし、実際の画面表示や操作感（UI/UX）はCIでは確認できません。シミュレーターを操作して見た目を確認したい場合は、[MacinCloud](https://www.macincloud.com/) や [MacStadium](https://www.macstadium.com/) などのクラウドMacサービスの利用を検討してください。
 
 ## トラブルシューティング
 
