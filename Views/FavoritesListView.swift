@@ -5,6 +5,7 @@ import SwiftUI
 struct FavoritesListView: View {
     @ObservedObject var favoritesViewModel: FavoritesViewModel
     @ObservedObject var authViewModel: AuthViewModel
+    @EnvironmentObject var knownPlacesViewModel: KnownPlacesViewModel
     @Environment(\.dismiss) var dismiss
     @State private var selectedPlace: Place? = nil
 
@@ -68,6 +69,7 @@ struct FavoritesListView: View {
                 DetailView(place: place)
                     .environmentObject(authViewModel)
                     .environmentObject(favoritesViewModel)
+                    .environmentObject(knownPlacesViewModel)
             }
         }
     }
@@ -78,4 +80,5 @@ struct FavoritesListView: View {
         favoritesViewModel: FavoritesViewModel(),
         authViewModel: AuthViewModel()
     )
+    .environmentObject(KnownPlacesViewModel())
 }

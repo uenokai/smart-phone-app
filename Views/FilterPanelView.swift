@@ -6,6 +6,7 @@ struct FilterPanelView: View {
     @ObservedObject var mapViewModel: MapViewModel
     @ObservedObject var tasteProfileViewModel: TasteProfileViewModel
     @ObservedObject var favoritesViewModel: FavoritesViewModel
+    @ObservedObject var knownPlacesViewModel: KnownPlacesViewModel
     @Binding var isExpanded: Bool
     @State private var showPresetSheet = false
     @State private var showSavePresetAlert = false
@@ -50,12 +51,12 @@ struct FilterPanelView: View {
             if isExpanded {
             ScrollView {
                 VStack(spacing: 12) {
-                    // キーワード検索
+                    // 店名での絞り込み（取得した候補に対してクライアント側で適用）
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("キーワード")
+                        Text("店名で絞り込み（任意）")
                             .font(.caption)
                             .foregroundColor(.gray)
-                        TextField("お店の名前など", text: $searchViewModel.currentFilter.name)
+                        TextField("店名の一部", text: $searchViewModel.currentFilter.name)
                             .textFieldStyle(.roundedBorder)
                     }
 
@@ -69,7 +70,7 @@ struct FilterPanelView: View {
                             set: { searchViewModel.currentFilter.categories = [$0] }
                         )) {
                             ForEach(Place.PlaceCategory.allCases, id: \.self) { category in
-                                Text(categoryLabel(category)).tag(category)
+                                Text(category.label).tag(category)
                             }
                         }
                         .pickerStyle(.segmented)
@@ -107,6 +108,22 @@ struct FilterPanelView: View {
                             in: 0.5...10.0,
                             step: 0.5
                         )
+                    }
+
+                    // 候補集めの徹底度（API呼び出し回数）
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("候補の集め方：検索\(searchViewModel.currentFilter.thoroughness.maxAPICalls)回まで")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Picker("候補の集め方", selection: $searchViewModel.currentFilter.thoroughness) {
+                            ForEach(SearchFilter.Thoroughness.allCases, id: \.self) { level in
+                                Text(level.label).tag(level)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        Text("範囲を小さな円に分けて距離順に取るため、回数が多いほど人気順では出てこない店まで拾えます")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
                     }
 
                     // 営業状況
@@ -170,7 +187,8 @@ struct FilterPanelView: View {
                         searchViewModel.performSearch(
                             with: mapViewModel,
                             profile: tasteProfileViewModel.profile,
-                            learnedTags: favoritesViewModel.learnedMoodTags
+                            learnedTags: favoritesViewModel.learnedMoodTags,
+                            knownIds: excludedIds
                         )
                     }) {
                         HStack {
@@ -178,7 +196,7 @@ struct FilterPanelView: View {
                                 ProgressView()
                                     .tint(.white)
                             }
-                            Text(mapViewModel.isLoading ? "検索中..." : "検索")
+                            Text(mapViewModel.isLoading ? (mapViewModel.progress ?? "検索中...") : "知らない店を探す")
                                 .font(.headline)
                         }
                         .frame(maxWidth: .infinity)
@@ -216,7 +234,8 @@ struct FilterPanelView: View {
         .sheet(isPresented: $showTasteProfileSheet) {
             TasteProfileView(
                 tasteProfileViewModel: tasteProfileViewModel,
-                learnedTags: favoritesViewModel.learnedMoodTags
+                learnedTags: favoritesViewModel.learnedMoodTags,
+                isWebMentionAvailable: mapViewModel.isWebMentionAvailable
             )
         }
         .alert("プリセットを保存", isPresented: $showSavePresetAlert) {
@@ -231,22 +250,16 @@ struct FilterPanelView: View {
         }
     }
 
-    private func categoryLabel(_ category: Place.PlaceCategory) -> String {
-        switch category {
-        case .restaurant: return "レストラン"
-        case .cafe: return "カフェ"
-        case .bar: return "バー"
-        case .touristAttraction: return "観光地"
-        case .museum: return "博物館"
-        case .park: return "公園"
-        }
+    /// 結果から外す店：既知リストに加え、お気に入り（すでに知っている店）も外す
+    private var excludedIds: Set<String> {
+        knownPlacesViewModel.knownIds.union(favoritesViewModel.favorites.map { $0.id })
     }
 
     /// 収納時にヘッダーへ表示する現在の検索条件の要約
     private var collapsedSummary: String {
         let filter = searchViewModel.currentFilter
         var parts: [String] = []
-        parts.append(categoryLabel(filter.categories.first ?? .restaurant))
+        parts.append((filter.categories.first ?? .restaurant).label)
         parts.append("\(String(format: "%.1f", filter.maxDistance))km")
         if filter.minRating > 0 {
             parts.append("★\(String(format: "%.1f", filter.minRating))+")
@@ -277,7 +290,7 @@ struct PresetsListView: View {
                                 VStack(alignment: .leading) {
                                     Text(key)
                                         .font(.headline)
-                                    Text("\(searchViewModel.savedPresets[key]?.categories.first?.rawValue ?? "")")
+                                    Text("\(searchViewModel.savedPresets[key]?.categories.first?.label ?? "")")
                                         .font(.caption)
                                         .foregroundColor(.gray)
                                 }
@@ -308,6 +321,7 @@ struct PresetsListView: View {
         mapViewModel: MapViewModel(),
         tasteProfileViewModel: TasteProfileViewModel(),
         favoritesViewModel: FavoritesViewModel(),
+        knownPlacesViewModel: KnownPlacesViewModel(),
         isExpanded: .constant(true)
     )
 }

@@ -17,17 +17,19 @@ class SearchViewModel: ObservableObject {
     }
 
     /// 現在のフィルター条件と好みプロファイルで検索実行
-    /// learnedTags はお気に入りの傾向から自動学習したタグ
+    /// learnedTags はお気に入りの傾向から自動学習したタグ、knownIds は結果から外す既知の店
     func performSearch(
         with mapViewModel: MapViewModel,
         profile: TasteProfile = TasteProfile(),
-        learnedTags: [String] = []
+        learnedTags: [String] = [],
+        knownIds: Set<String> = []
     ) {
         Task {
             await mapViewModel.searchPlaces(
                 filter: currentFilter,
                 profile: profile,
-                learnedTags: learnedTags
+                learnedTags: learnedTags,
+                knownIds: knownIds
             )
         }
     }

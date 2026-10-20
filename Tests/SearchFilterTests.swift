@@ -88,10 +88,78 @@ final class SearchFilterTests: XCTestCase {
         XCTAssertTrue(filter.matches(closed))
     }
 
+    // MARK: - 営業状態・店名
+
+    func testMatches_恒久閉店や一時休業の店は除外する() {
+        let filter = SearchFilter()
+        XCTAssertFalse(filter.matches(makePlace(businessStatus: "CLOSED_PERMANENTLY")))
+        XCTAssertFalse(filter.matches(makePlace(businessStatus: "CLOSED_TEMPORARILY")))
+        XCTAssertTrue(filter.matches(makePlace(businessStatus: "OPERATIONAL")))
+        XCTAssertTrue(filter.matches(makePlace(businessStatus: nil)))
+    }
+
+    func testMatches_店名の絞り込みは部分一致で大文字小文字を区別しない() {
+        var filter = SearchFilter()
+        filter.name = "yamagoya"
+        XCTAssertTrue(filter.matches(makePlace(name: "Cafe YAMAGOYA")))
+        XCTAssertFalse(filter.matches(makePlace(name: "喫茶 山小屋")))
+        filter.name = "   "
+        XCTAssertTrue(filter.matches(makePlace(name: "喫茶 山小屋")), "空白だけなら絞り込まない")
+    }
+
     // MARK: - デフォルト条件
 
     func testMatches_デフォルト条件では通常の店を通す() {
         let filter = SearchFilter()
         XCTAssertTrue(filter.matches(makePlace()))
+    }
+
+    func testDefault_検索半径は2kmで徹底度は標準() {
+        let filter = SearchFilter()
+        XCTAssertEqual(filter.maxDistance, 2.0)
+        XCTAssertEqual(filter.thoroughness, .standard)
+        XCTAssertEqual(filter.thoroughness.maxAPICalls, 8)
+    }
+
+    // MARK: - 旧バージョンとの互換
+
+    func testDecode_旧バージョンのプリセットに無い項目は既定値で補う() throws {
+        let legacy = """
+        {"name":"","categories":["cafe"],"minPriceLevel":1,"maxPriceLevel":3,"minRating":4.0,"maxDistance":3.0,"tags":[],"includeOpen":false,"sortBy":"rating"}
+        """
+        let filter = try JSONDecoder().decode(SearchFilter.self, from: Data(legacy.utf8))
+
+        XCTAssertEqual(filter.categories, [.cafe])
+        XCTAssertEqual(filter.maxPriceLevel, 3)
+        XCTAssertEqual(filter.maxDistance, 3.0)
+        XCTAssertFalse(filter.includeOpen)
+        XCTAssertEqual(filter.thoroughness, .standard)
+    }
+
+    func testCodable_往復しても値が変わらない() throws {
+        var filter = SearchFilter()
+        filter.name = "山小屋"
+        filter.categories = [.bar]
+        filter.thoroughness = .thorough
+        filter.maxDistance = 1.5
+
+        let data = try JSONEncoder().encode(filter)
+        let decoded = try JSONDecoder().decode(SearchFilter.self, from: data)
+
+        XCTAssertEqual(decoded, filter)
+    }
+
+    func testTasteProfile_旧バージョンの設定に無い項目は既定値で補う() throws {
+        let legacy = """
+        {"moodTags":["隠れ家"],"avoidTags":[],"hiddenGemWeight":0.5,"excludeChains":false,"maxReviewCount":100}
+        """
+        let profile = try JSONDecoder().decode(TasteProfile.self, from: Data(legacy.utf8))
+
+        XCTAssertEqual(profile.moodTags, ["隠れ家"])
+        XCTAssertEqual(profile.hiddenGemWeight, 0.5)
+        XCTAssertFalse(profile.excludeChains)
+        XCTAssertEqual(profile.maxReviewCount, 100)
+        XCTAssertTrue(profile.hideKnownPlaces)
+        XCTAssertTrue(profile.useWebMentions)
     }
 }
