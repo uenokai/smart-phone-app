@@ -163,8 +163,7 @@ struct DetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("判定の内訳", systemImage: "list.bullet.clipboard")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(String(format: "総合 %.2f", scored.total))
                     .font(.caption)
@@ -204,8 +203,7 @@ struct DetailView: View {
     private func webMentionsSection(_ mentions: WebMentionSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("ネット上の言及", systemImage: "network")
-                .font(.subheadline)
-                .fontWeight(.semibold)
+                .font(.subheadline.weight(.semibold))
 
             Text(mentionCountsText(mentions))
                 .font(.caption2)
