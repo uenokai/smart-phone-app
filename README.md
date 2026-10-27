@@ -1,54 +1,63 @@
-# LocalRecommend - 地域のお気に入り発見アプリ
+# LocalRecommend - 知らない良い店を知るアプリ
 
-GoogleマップやTabelogなどのデータを活用し、地域の飲食店と観光スポットを**複数の条件と個人の好みに基づいてレコメンド**するiOSアプリです。
+Google Places API (New) のデータとネット上の口コミを組み合わせ、**人気順の検索では出てこない、まだ知られていない良い店**を見つけるiOSアプリです。
 
-**このアプリの価値は、メジャーなお店やスポット以外を知れることにあります。**
-「評価は高いのに口コミが少ない＝まだ知られていない良いお店」を独自の穴場スコアで発掘し、💎バッジと紫ピンで提示します。
+**このアプリの価値は、Googleマップで普通に検索しても出てこない店を知れることにあります。**
+Googleマップの検索結果は人気順の上位に偏り、口コミの少ない店は埋もれます。このアプリは範囲を小さな円に分けて距離順に全件に近く候補を集め、「評価は高いのに知られていない」「本物の口コミで裏付けがある」店を上位に出します。
 
 ## 機能概要
 
 ### コアUI
-- **ホーム画面**：Googleマップを表示し、検索結果をピンで表示
-- **条件指定パネル**：複数の条件を組み合わせて検索
-- **詳細表示**：ピンをタップして店舗情報を確認
+- **ホーム画面**：マップに検索結果をピン表示（💎穴場＝紫、🔍未確認＝青緑）
+- **条件指定パネル**：カテゴリ・価格帯・距離・営業状況・評価・候補の集め方
+- **詳細表示**：判定の内訳、ネット上の言及、Googleの口コミ、「行った／知ってた／興味なし」の記録
 
 ### 主な機能
-- ✅ カテゴリ選択（飲食店 / 観光スポット）
-- ✅ 価格帯・距離・ジャンル・営業状況による絞り込み
-- ✅ Google口コミ・食べログ評価の表示
-- ✅ 条件プリセットの保存・読み込み
-- ✅ Google Mapsへのリンク
-- ✅ 会員機能（Sign in with Apple）
-- ✅ お気に入り登録（会員限定）
-- ✅ 好みプロファイル（雰囲気タグ・穴場重視度・チェーン店除外）
-- ✅ 穴場スコアリング（💎バッジ・紫ピンで穴場を可視化）
+- ✅ 円分割・距離順による候補集め（人気順の上位20件に偏らない）
+- ✅ 有益スコアによる並べ替えと、理由の内訳表示
+- ✅ ネット上の本物の口コミ（ブログ・SNS）の加点、PR・広告・タイアップの除外
+- ✅ 食べログの点数の読み取り（検索スニペットから）
+- ✅ Googleの口コミの招待・PR表記の検出（評価に不使用）
+- ✅ チェーン判定（キーワード＋候補内の同名支店）
+- ✅ 既知の店の記録と除外（行った／知ってた／興味なし／お気に入り）
+- ✅ 好みプロファイル（雰囲気タグ・穴場重視度）と、お気に入りからの自動学習
+- ✅ 会員機能（Sign in with Apple）とお気に入り
 
-### 好みプロファイルと穴場発見について
-検索パネルの「好みの設定」から、自分の好みを細かく伝えられます：
+## 「有益」の判定方法
 
-- **穴場重視度スライダー**：「評価の高さ重視」〜「穴場重視」を調整。穴場側に寄せるほど、評価は高いのに口コミが少ない場所が上位に表示されます
-- **チェーン店除外**：全国チェーンを検索結果から除外（デフォルトON）
-- **口コミ数の上限**：「〜100件」などを設定すると、口コミの多い有名店・観光名所が除外されます
-- **好みの雰囲気タグ**：「隠れ家」「静か」「老舗」「個人経営」など。店名・口コミにタグが含まれる場所を優先します
-- **避けたいものタグ**：「行列」「混雑」「観光客」など。該当する場所は順位が下がります
-- **好みの自動学習**：お気に入りに登録した場所に共通する雰囲気タグ（2件以上で共通するもの）を自動で学習し、検索時に加点します。学習したタグは「好みの設定」画面の「あなたの傾向」で確認できます
+総合スコア ＝ (1−h)×品質 ＋ h×未知度 ＋ 0.25×新しさ ＋ 0.3×ネットの口コミ ＋ タグ加減点 − チェーン減点
+（h ＝ 穴場重視度 0〜1、既定 0.7）
 
-### 口コミ取得の仕組み（2段階検索）
-Nearby Searchは口コミ本文を返さないため、検索は2段階で行います：
+| 項目 | 計算 | ねらい |
+| --- | --- | --- |
+| 品質 | Google評価のベイズ平均（口コミ数が少ないほど周辺平均に寄せる）。食べログの点数が読めれば35%混ぜる | 口コミ3件の5.0が口コミ80件の4.5を上回らないようにする |
+| 未知度 | その検索の候補の中での口コミ数の相対位置（7割）＋絶対数（3割）。1,000件以上は0 | 都心と地方で口コミ数の水準が違うため固定のしきい値を使わない |
+| 新しさ | 取得できた口コミの最新投稿日（3か月以内=1.0、2年超=0.15） | 閉店寸前・放置状態の店を下げる |
+| ネットの口コミ | ブログ・SNS・投稿サイトでの言及数の対数（8件で満点） | Googleに口コミが少なくても、本物の推薦があれば拾う |
+| メディア掲載 | テレビ・ニュース・グルメ記事に出ていれば未知度を0.6倍 | すでに知られている店を下げる |
+| 口コミの信頼性 | 招待・PR・提供・身内と読める口コミがあれば品質を減点し、タグ照合からも除外 | 本物の口コミだけを使う |
+| チェーン | キーワード表、または候補内に同名（支店名を除く）の店が複数 | 穴場志向と相反するため減点・除外 |
+| 裏付けの少なさ | 口コミ5件未満かつネット言及なし → 総合×0.8、🔍未確認バッジ | 評価が高くても根拠が薄い店を区別する |
 
-1. Nearby Searchで候補を取得し、評価・口コミ数で一次ランキング
-2. 上位15件にPlace Details APIで口コミ本文・営業時間・連絡先を追加取得（日本語指定・fields絞り込みでAPI課金を抑制）
-3. 口コミテキストを使って好みタグ・学習タグとのマッチングで最終ランキング
+### ネット上の言及の分類（PR・広告の除外）
+| 分類 | 扱い | 判定 |
+| --- | --- | --- |
+| 本物の口コミ | 加点 | ameblo・はてな・note・X・Instagram・Threads・TikTok・YouTube などの投稿、URLに blog/diary を含むページ |
+| PR・広告 | 評価に使わない | PR TIMES 等のプレスリリース配信サイト、タイトル・本文に「PR」「タイアップ」「提供」「案件」「モニター募集」「招待」などの表記 |
+| メディア | 未知度を下げる | NHK・民放・新聞・Yahoo!ニュース・ウォーカープラス・グルメ系キュレーション |
+| 掲載サイト | 件数のみ表示 | 食べログ・Retty・ホットペッパー・ぐるなび・Googleマップ等（食べログは点数を読み取る） |
+| 公式 | 使わない | 店の公式サイト |
 
-これにより、詳細画面の営業時間・電話番号・口コミも検索直後から表示されます。
+判定の内訳は詳細画面の「判定の内訳」「ネット上の言及」で確認できます。
 
-穴場と判定された場所は、検索結果カードと詳細画面に **💎 穴場** バッジが付き、マップ上では**紫のピン**で表示されます。
+### 候補の集め方（2段階＋ネット検索）
+1. 検索範囲を中心1円＋周囲6円に分け、各円を **距離順** で取得（Nearby Search、1回20件）。20件で打ち切られた円は、呼び出し回数の余裕がある限り4分割して取り直す
+2. 価格帯・最低評価・営業中・営業状態で絞り込み、一次採点
+3. 上位15件に Place Details で口コミ本文・投稿日・営業時間・連絡先を付加
+4. 上位10件の店名＋市区町村で Brave Search を実行し、言及を分類・集計（14日間キャッシュ）
+5. 候補全体の統計で最終採点し、上位30件を表示
 
-### 会員機能について
-- **未登録でも利用可能**：検索・マップ表示・詳細閲覧は会員登録なしで使えます
-- **お気に入りは会員限定**：お店やスポットのお気に入り登録にはサインイン（無料）が必要です
-- 認証には **Sign in with Apple** を採用（メールアドレス・パスワード不要）
-- お気に入りは会員IDごとに端末内に保存されます
+「候補の集め方」は 速い（4回）／標準（8回）／徹底（16回）から選べます。
 
 ## セットアップ手順
 
@@ -64,24 +73,33 @@ xcodegen generate
 open LocalRecommend.xcodeproj
 ```
 
-アプリ本体（LocalRecommend）とユニットテスト（LocalRecommendTests）のターゲット・スキームが自動生成されます。
+### 2. Google Places API (New) のキーを取得
 
-### 2. Google Places APIキーを取得
+旧 Places API は 2026年10月以降、新規の Google Cloud プロジェクトでは有効化できません。**Places API (New)** を使います。
 
-1. [Google Cloud Console](https://console.cloud.google.com) にアクセス
-2. 新しいプロジェクトを作成
-3. Places API と Maps SDK for iOS を有効化
-4. APIキーを生成
-5. iOS Key制限を設定（Bundle IDを指定）
+1. [Google Cloud Console](https://console.cloud.google.com) でプロジェクトを作成
+2. 「Places API (New)」を有効化
+3. APIキーを作成し、**アプリケーションの制限：iOSアプリ**（Bundle ID `com.localrecommend.app`）、**APIの制限：Places API (New)** を設定
+4. `Info.plist` の `GOOGLE_PLACES_API_KEY` に設定
 
-### 3. APIキーを設定
+#### 料金の目安（2026年10月時点の公開価格）
+| 呼び出し | SKU | 無料枠（月） | 超過時 |
+| --- | --- | --- | --- |
+| Nearby Search（評価・口コミ数まで） | Enterprise | 1,000回 | $35 / 1,000回 |
+| Place Details（口コミ本文まで） | Enterprise + Atmosphere | 1,000回 | $25 / 1,000回 |
+| 写真 | Place Photos | 1,000回 | $7 / 1,000回 |
 
-**方法1：Info.plist経由（推奨）**
-- `Info.plist` ファイルを開く
-- `GOOGLE_PLACES_API_KEY` の値を取得したAPIキーに変更
+1回の検索で Nearby Search を4〜16回、Place Details を最大15回、写真を詳細画面を開いた分だけ使います。標準設定なら無料枠で月60回ほど検索できます。
 
-**方法2：環境変数経由**
-- `GooglePlacesService.swift` の `init` メソッドを修正
+### 3. Brave Search API のキーを取得（ネット上の口コミを使う場合）
+
+Google Custom Search JSON API は新規受付を終了したため、Brave Search API を使います。
+
+1. [Brave Search API](https://brave.com/search/api/) でアカウントを作成（カード登録が必要）
+2. Search プランのキーを発行（$5 / 1,000件、毎月 $5 分＝約1,000件の無料枠）
+3. `Info.plist` の `BRAVE_SEARCH_API_KEY` に設定
+
+未設定でもアプリは動きます（ネットの口コミ・食べログ点数の項目が空になります）。1回の検索で最大10件の店を調べ、結果は14日間キャッシュします。
 
 ### 4. Xcodeでビルド & 実行
 
@@ -101,9 +119,13 @@ Xcodeで `Cmd + U`、またはコマンドラインから：
 xcodebuild test -scheme LocalRecommend -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-テスト対象：
-- `RecommendationEngineTests`：穴場スコア・チェーン判定・ランキング・タグ加点
-- `SearchFilterTests`：価格帯・最低評価・営業中フィルターの判定
+テスト対象（通信は行いません）：
+- `RecommendationEngineTests`：ベイズ平均・候補内未知度・新しさ・ネット言及・食べログ・口コミの信頼性・チェーン判定・バッジ・理由
+- `WebMentionAnalyzerTests`：言及の分類・PRの検出と誤検知防止・ドメイン単位の集計・食べログ点数の読み取り・住所からの市区町村抽出
+- `CandidateCollectorTests`：円分割・分割の予算・重複除去・範囲外の除外・エラー処理
+- `PlacesAPIDecodingTests`：Places API (New) のレスポンス変換・旧データとの互換
+- `SearchFilterTests`：価格帯・最低評価・営業中・営業状態・店名・旧プリセットの互換
+- `KnownPlacesTests`：既知の店の記録と除外
 - `FavoritesLearningTests`：お気に入りからの好み自動学習
 
 ## ファイル構成
@@ -111,35 +133,39 @@ xcodebuild test -scheme LocalRecommend -destination 'platform=iOS Simulator,name
 ```
 smart-phone-app/
 ├── Models/
-│   ├── Place.swift              # お店/スポット・検索条件モデル
+│   ├── Place.swift              # お店・検索条件モデル（Places API (New) 対応）
+│   ├── WebMention.swift         # ネット言及・食べログ点数モデル
+│   ├── GeoPoint.swift           # 緯度経度（距離・オフセット計算）
+│   ├── NameNormalizer.swift     # 支店名の除去・店名の比較
 │   ├── TasteProfile.swift       # 好みプロファイルモデル
 │   └── User.swift               # 会員モデル
 ├── ViewModels/
-│   ├── MapViewModel.swift       # マップロジック
-│   ├── SearchViewModel.swift    # 検索条件ロジック
+│   ├── MapViewModel.swift       # 検索の流れ（候補集め→詳細→ネット言及→採点）
+│   ├── SearchViewModel.swift    # 検索条件・プリセット
 │   ├── TasteProfileViewModel.swift # 好みプロファイル管理
+│   ├── KnownPlacesViewModel.swift  # 既知の店（行った／知ってた／興味なし）
 │   ├── AuthViewModel.swift      # 会員認証（Sign in with Apple）
 │   └── FavoritesViewModel.swift # お気に入り管理（会員限定）
 ├── Views/
-│   ├── ContentView.swift        # メイン画面
-│   ├── MapView.swift            # マップ表示（穴場は紫ピン）
+│   ├── ContentView.swift        # メイン画面・結果カード
+│   ├── MapView.swift            # マップ表示（穴場は紫、未確認は青緑）
 │   ├── FilterPanelView.swift    # 条件指定パネル
 │   ├── TasteProfileView.swift   # 好みの設定画面
-│   ├── DetailView.swift         # 詳細表示（お気に入りボタン付き）
+│   ├── DetailView.swift         # 詳細表示（判定の内訳・ネット言及・口コミ・既知の記録）
 │   ├── LoginView.swift          # 会員登録・サインイン画面
-│   ├── AccountView.swift        # アカウント画面
+│   ├── AccountView.swift        # アカウント画面・既知の店一覧
 │   └── FavoritesListView.swift  # お気に入り一覧
 ├── Services/
-│   ├── GooglePlacesService.swift # Google Places API統合
-│   └── RecommendationEngine.swift # 穴場スコアリング・好みマッチング
-├── Tests/
-│   ├── RecommendationEngineTests.swift # エンジンのユニットテスト
-│   ├── SearchFilterTests.swift  # フィルター判定のテスト
-│   └── FavoritesLearningTests.swift # 好み自動学習のテスト
+│   ├── GooglePlacesService.swift   # Places API (New)：Nearby Search / Place Details / 写真
+│   ├── CandidateCollector.swift    # 円分割・距離順の候補集め
+│   ├── WebMentionService.swift     # Brave Search API クライアント・キャッシュ
+│   ├── WebMentionAnalyzer.swift    # 言及の分類・PR検出・食べログ点数・住所解析
+│   └── RecommendationEngine.swift  # 有益スコアの採点・理由の内訳
+├── Tests/                       # ユニットテスト
 ├── project.yml                  # XcodeGen 設定（.xcodeproj生成用）
 ├── LocalRecommendApp.swift      # アプリエントリーポイント
 ├── LocalRecommend.entitlements  # Sign in with Apple 用エンタイトルメント
-├── Info.plist                   # プロジェクト設定
+├── Info.plist                   # プロジェクト設定・APIキー
 └── README.md                    # このファイル
 ```
 
@@ -163,28 +189,32 @@ smart-phone-app/
 - [x] 複数条件フィルタリング
 - [x] マップ上にピン表示
 
-### Phase 2: UX改善 🔄 (進行中)
+### Phase 2: UX改善 ✅
 - [x] 会員機能（Sign in with Apple）
 - [x] お気に入り登録・一覧（会員限定）
 - [x] 好みプロファイル（雰囲気タグ・穴場重視度）
 - [x] 穴場スコアリングとバッジ表示
 - [x] お気に入りからの好み自動学習
-- [x] Details APIによる口コミ本文の取得（2段階検索）
-- [x] 価格帯・最低評価・営業中フィルターの適用（API+クライアント側）
+- [x] Details APIによる口コミ本文の取得
+- [x] 価格帯・最低評価・営業中フィルターの適用
 - [x] XcodeGenによるプロジェクト生成対応
-- [x] ユニットテスト（エンジン・フィルター・学習ロジック）
-- [x] 検索パネルの開閉式化（地図を広く見られる）
-- [x] ピンタップで詳細表示
-- [x] 地図中心を検索起点に（動かした先で検索できる）
-- [x] 検索後は全ピンが収まるよう自動ズーム
-- [x] ダークモード対応
-- [x] 結果カードに現在地からの距離表示
-- [x] GitHub Actions CI（Macなしでもビルド・テストを自動確認）
-- [ ] パフォーマンス最適化
+- [x] ユニットテスト
+- [x] 検索パネルの開閉式化・地図中心を検索起点に・自動ズーム・ダークモード・距離表示
+- [x] GitHub Actions CI
 
-### Phase 3: 観光スポット対応 📋
-- [ ] 観光スポット用フィルタリング
-- [ ] スポット詳細情報取得
+### Phase 3: 判定の再設計（知らない良い店を知る）✅
+- [x] Places API (New) への移行（旧APIは新規プロジェクトで有効化不可）
+- [x] 円分割・距離順の候補集め
+- [x] ベイズ平均・候補内未知度・新しさによる採点と理由の内訳
+- [x] ネット上の本物の口コミの加点、PR・広告・メディアの分類
+- [x] 食べログ点数の読み取り（検索スニペット）
+- [x] Googleの口コミの招待・PR表記の検出
+- [x] 既知の店の記録と除外
+- [x] 写真表示（Place Photos）
+
+### Phase 4: 予定 📋
+- [ ] Apify を使った食べログ・Instagram・X の口コミ本文の取得（利用規約・料金・所要時間の確認が前提）
+- [ ] 観光スポット向けの判定調整
 - [ ] 実デバイスでの動作検証
 
 ## 技術スタック
@@ -192,8 +222,8 @@ smart-phone-app/
 - **言語**：Swift 5.9+
 - **UI フレームワーク**：SwiftUI
 - **マップ**：MapKit
-- **外部API**：Google Places API
-- **ストレージ**：CoreData (将来実装)
+- **外部API**：Google Places API (New)、Brave Search API
+- **ストレージ**：UserDefaults（設定・お気に入り・既知の店）、Caches（ネット言及）
 - **最小iOS**：iOS 15.0+
 
 ## Macを持っていない場合
@@ -209,27 +239,19 @@ GitHubリポジトリの **Actions** タブから結果（緑✅ / 赤❌）を�
 
 ## トラブルシューティング
 
-### APIキーエラー
-- Google Cloud Console でAPIキーが有効か確認
-- Bundle IDが正しいか確認
-- Info.plist の `GOOGLE_PLACES_API_KEY` が正しく設定されているか確認
+### APIキーエラー（Google Places API エラー（PERMISSION_DENIED）…）
+- 「Places API (New)」が有効か確認（旧「Places API」とは別）
+- APIキーの制限が iOS アプリ＋Bundle ID `com.localrecommend.app` になっているか確認
+- `Info.plist` の `GOOGLE_PLACES_API_KEY` が正しく設定されているか確認
+
+### ネット上の言及が「未設定」と表示される
+- `Info.plist` の `BRAVE_SEARCH_API_KEY` を設定し、アプリを再起動してください
+- 「好みの設定」の「ネット上の口コミも参考にする」がONか確認
 
 ### 位置情報が取得できない
 - シミュレーターの位置情報設定を確認
 - `Info.plist` の `NSLocationWhenInUseUsageDescription` が設定されているか確認
 - 実機の場合、設定アプリで位置情報許可を確認
-
-### マップが表示されない
-- MapKit フレームワークが正しくリンクされているか確認
-- iOS 15.0以上のターゲットを使用しているか確認
-
-## 将来の拡張予定
-
-- ユーザーレビュー・コメント投稿機能
-- ソーシャル機能（友人と条件をシェア）
-- 食べログAPI統合
-- AR機能（方向表示）
-- オフラインマップ
 
 ## ライセンス
 

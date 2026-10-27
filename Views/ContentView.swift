@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var favoritesViewModel = FavoritesViewModel()
     @StateObject private var tasteProfileViewModel = TasteProfileViewModel()
+    @StateObject private var knownPlacesViewModel = KnownPlacesViewModel()
     @State private var showAccountView = false
     @State private var showFavoritesView = false
     @State private var isPanelExpanded = true
@@ -15,7 +16,7 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             // マップビュー
-            MapView(viewModel: mapViewModel, places: mapViewModel.places)
+            MapView(viewModel: mapViewModel, results: mapViewModel.results)
                 .ignoresSafeArea()
                 .onAppear {
                     mapViewModel.startUpdatingLocation()
@@ -26,16 +27,16 @@ struct ContentView: View {
                 Spacer()
 
                 // 結果カードの横スクロール（パネル収納時のみ表示し、地図と両立させる）
-                if !mapViewModel.places.isEmpty && !isPanelExpanded {
+                if !mapViewModel.results.isEmpty && !isPanelExpanded {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
-                            ForEach(mapViewModel.places) { place in
+                            ForEach(mapViewModel.results) { scored in
                                 PlaceCardView(
-                                    place: place,
-                                    distanceText: distanceText(to: place)
+                                    scored: scored,
+                                    distanceText: distanceText(to: scored.place)
                                 )
                                 .onTapGesture {
-                                    mapViewModel.selectedPlace = place
+                                    mapViewModel.selectedResult = scored
                                 }
                             }
                         }
@@ -49,25 +50,31 @@ struct ContentView: View {
                     mapViewModel: mapViewModel,
                     tasteProfileViewModel: tasteProfileViewModel,
                     favoritesViewModel: favoritesViewModel,
+                    knownPlacesViewModel: knownPlacesViewModel,
                     isExpanded: $isPanelExpanded
                 )
-                .frame(maxHeight: isPanelExpanded ? 400 : nil)
+                .frame(maxHeight: isPanelExpanded ? 440 : nil)
                 .background(Color(.systemBackground))
                 .cornerRadius(16, corners: [.topLeft, .topRight])
                 .shadow(radius: 10)
             }
             .ignoresSafeArea(.keyboard)
 
-            // 上部バー（検索結果件数 + アカウント / お気に入りボタン）
+            // 上部バー（検索の要約 + アカウント / お気に入りボタン）
             VStack {
                 HStack(alignment: .top) {
-                    if !mapViewModel.places.isEmpty {
-                        Text("検索結果：\(mapViewModel.places.count)件")
-                            .font(.caption)
-                            .padding(8)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(6)
+                    if let summary = mapViewModel.searchSummary, !mapViewModel.results.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("表示 \(summary.shownCount)件")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                            Text(summary.text)
+                                .font(.caption2)
+                        }
+                        .padding(8)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(6)
                     }
 
                     Spacer()
@@ -102,15 +109,17 @@ struct ContentView: View {
             }
         }
         // ピンタップ・カードタップの両方からここで詳細を開く
-        .sheet(item: $mapViewModel.selectedPlace) { place in
-            DetailView(place: place)
+        .sheet(item: $mapViewModel.selectedResult) { scored in
+            DetailView(place: scored.place, scored: scored, placesService: mapViewModel.placesService)
                 .environmentObject(authViewModel)
                 .environmentObject(favoritesViewModel)
+                .environmentObject(knownPlacesViewModel)
         }
         .sheet(isPresented: $showAccountView) {
             AccountView(
                 authViewModel: authViewModel,
-                favoritesViewModel: favoritesViewModel
+                favoritesViewModel: favoritesViewModel,
+                knownPlacesViewModel: knownPlacesViewModel
             )
         }
         .sheet(isPresented: $showFavoritesView) {
@@ -118,6 +127,7 @@ struct ContentView: View {
                 favoritesViewModel: favoritesViewModel,
                 authViewModel: authViewModel
             )
+            .environmentObject(knownPlacesViewModel)
         }
         .onAppear {
             favoritesViewModel.setUser(authViewModel.currentUser?.id)
@@ -127,7 +137,7 @@ struct ContentView: View {
         }
         // 検索が完了して結果があればパネルを収納し、地図と結果カードを見せる
         .onChange(of: mapViewModel.isLoading) { isLoading in
-            if !isLoading && !mapViewModel.places.isEmpty {
+            if !isLoading && !mapViewModel.results.isEmpty {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     isPanelExpanded = false
                 }
@@ -149,21 +159,31 @@ struct ContentView: View {
 
 /// 検索結果のカード表示
 struct PlaceCardView: View {
-    let place: Place
+    let scored: ScoredPlace
     var distanceText: String? = nil
 
+    private var place: Place { scored.place }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 穴場バッジ（このアプリの核となる価値の可視化）
-            if RecommendationEngine.isHiddenGem(place) {
-                Text("💎 穴場")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.purple.opacity(0.15))
-                    .foregroundColor(.purple)
-                    .cornerRadius(8)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                // 穴場・未確認バッジ（このアプリの核となる価値の可視化）
+                if let label = scored.badge.label {
+                    Text(label)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(badgeColor.opacity(0.15))
+                        .foregroundColor(badgeColor)
+                        .cornerRadius(8)
+                }
+                Spacer(minLength: 0)
+                if let mentions = place.webMentions, mentions.genuineCount > 0 {
+                    Label("\(mentions.genuineCount)", systemImage: "text.bubble")
+                        .font(.caption2)
+                        .foregroundColor(.teal)
+                }
             }
 
             Text(place.name)
@@ -190,24 +210,41 @@ struct PlaceCardView: View {
                 }
             }
 
-            Text(place.address)
-                .font(.caption2)
-                .foregroundColor(.gray)
-                .lineLimit(2)
+            // 上位に来た理由（詳細画面で内訳を見られる）
+            if !scored.headline.isEmpty {
+                Text(scored.headline)
+                    .font(.caption2)
+                    .foregroundColor(.purple)
+                    .lineLimit(1)
+            }
 
             Spacer()
 
-            if let distanceText = distanceText {
-                Label(distanceText, systemImage: "figure.walk")
+            HStack {
+                if let distanceText = distanceText {
+                    Label(distanceText, systemImage: "figure.walk")
+                        .font(.caption2)
+                        .foregroundColor(.blue)
+                }
+                Spacer()
+                Text(String(format: "%.2f", scored.total))
                     .font(.caption2)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.gray)
             }
         }
         .padding(12)
-        .frame(width: 160, height: 150)
+        .frame(width: 170, height: 160)
         .background(Color(.systemBackground))
         .cornerRadius(10)
         .shadow(radius: 4)
+    }
+
+    private var badgeColor: Color {
+        switch scored.badge {
+        case .hiddenGem: return .purple
+        case .unverified: return .teal
+        case .none: return .gray
+        }
     }
 }
 

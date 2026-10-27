@@ -4,7 +4,7 @@ import MapKit
 /// MapKitを使用したマップ表示ビュー
 struct MapView: UIViewRepresentable {
     @ObservedObject var viewModel: MapViewModel
-    var places: [Place]
+    var results: [ScoredPlace]
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
@@ -26,23 +26,23 @@ struct MapView: UIViewRepresentable {
         }
 
         // 検索結果が変わったときだけピンを更新する
-        let placeIds = places.map { $0.id }
+        let placeIds = results.map { $0.id }
         guard placeIds != context.coordinator.lastPlaceIds else { return }
         context.coordinator.lastPlaceIds = placeIds
 
         uiView.removeAnnotations(uiView.annotations.filter { !($0 is MKUserLocation) })
 
-        // 新しいピンを追加（穴場は紫ピンで区別）
-        let annotations = places.map { place -> PlaceAnnotation in
+        // 新しいピンを追加（穴場は紫、未確認は青緑、それ以外は青）
+        let annotations = results.map { scored -> PlaceAnnotation in
             let annotation = PlaceAnnotation()
             annotation.coordinate = CLLocationCoordinate2D(
-                latitude: place.latitude,
-                longitude: place.longitude
+                latitude: scored.place.latitude,
+                longitude: scored.place.longitude
             )
-            annotation.title = place.name
-            annotation.subtitle = place.address
-            annotation.placeId = place.id
-            annotation.isHiddenGem = RecommendationEngine.isHiddenGem(place)
+            annotation.title = scored.place.name
+            annotation.subtitle = scored.headline.isEmpty ? scored.place.address : scored.headline
+            annotation.placeId = scored.id
+            annotation.badge = scored.badge
             return annotation
         }
 
@@ -94,40 +94,32 @@ struct MapView: UIViewRepresentable {
                 for: annotation
             ) as? MKMarkerAnnotationView
 
-            // 穴場は紫ピン＋💎、それ以外は青ピン
-            let isHiddenGem = (annotation as? PlaceAnnotation)?.isHiddenGem ?? false
-            annotationView?.markerTintColor = isHiddenGem ? .systemPurple : .systemBlue
-            annotationView?.glyphText = isHiddenGem ? "💎" : "📍"
+            let badge: ScoredPlace.Badge = (annotation as? PlaceAnnotation)?.badge ?? ScoredPlace.Badge.none
+            switch badge {
+            case .hiddenGem:
+                annotationView?.markerTintColor = .systemPurple
+                annotationView?.glyphText = "💎"
+            case .unverified:
+                annotationView?.markerTintColor = .systemTeal
+                annotationView?.glyphText = "🔍"
+            case .none:
+                annotationView?.markerTintColor = .systemBlue
+                annotationView?.glyphText = "📍"
+            }
             return annotationView
         }
     }
 }
 
-/// 穴場情報と店IDを持たせたカスタムアノテーション
+/// 判定結果と店IDを持たせたカスタムアノテーション
 class PlaceAnnotation: MKPointAnnotation {
     var placeId: String = ""
-    var isHiddenGem: Bool = false
+    var badge: ScoredPlace.Badge = .none
 }
 
 #Preview {
     MapView(
         viewModel: MapViewModel(),
-        places: [
-            Place(
-                id: "1",
-                name: "Sample Restaurant",
-                category: .restaurant,
-                latitude: 35.6762,
-                longitude: 139.7674,
-                address: "Tokyo, Japan",
-                priceLevel: 2,
-                rating: 4.5,
-                userRatingsTotal: 42,
-                openingHours: nil,
-                website: nil,
-                phoneNumber: nil,
-                reviews: nil
-            )
-        ]
+        results: []
     )
 }

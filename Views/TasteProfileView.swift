@@ -6,6 +6,8 @@ struct TasteProfileView: View {
     @ObservedObject var tasteProfileViewModel: TasteProfileViewModel
     /// お気に入りの傾向から自動学習したタグ（表示のみ・検索時に自動で考慮される）
     var learnedTags: [String] = []
+    /// Brave Search API キーが設定されているか（未設定ならネット口コミは使えない）
+    var isWebMentionAvailable: Bool = false
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
@@ -36,7 +38,22 @@ struct TasteProfileView: View {
                 } header: {
                     Label("穴場度", systemImage: "sparkles")
                 } footer: {
-                    Text("「穴場重視」に寄せるほど、評価は高いのに口コミが少ない＝まだ知られていないお店やスポットが上位に表示されます。")
+                    Text("「穴場重視」に寄せるほど、評価は高いのに候補の中で口コミが少ない＝まだ知られていない店が上位に表示されます。評価は口コミ数で補正するため、口コミ数件の5.0が最上位に来ることはありません。")
+                }
+
+                // 情報源
+                Section {
+                    Toggle("ネット上の口コミも参考にする", isOn: $tasteProfileViewModel.profile.useWebMentions)
+                        .disabled(!isWebMentionAvailable)
+                    Toggle("行った・知ってた・お気に入りの店を外す", isOn: $tasteProfileViewModel.profile.hideKnownPlaces)
+                } header: {
+                    Label("情報源と除外", systemImage: "network")
+                } footer: {
+                    if isWebMentionAvailable {
+                        Text("ブログ・SNSの投稿を「本物の口コミ」として加点します。プレスリリース・PR・タイアップ・提供・案件・モニター・招待の表記があるページは評価に使いません。テレビ・ニュースでの露出は「すでに知られている」根拠として扱います。")
+                    } else {
+                        Text("ネット上の口コミを使うには Info.plist に BRAVE_SEARCH_API_KEY を設定してください（README参照）。")
+                    }
                 }
 
                 // メジャーな場所の除外
@@ -52,7 +69,7 @@ struct TasteProfileView: View {
                 } header: {
                     Label("メジャーな場所の除外", systemImage: "person.3.slash")
                 } footer: {
-                    Text("口コミ数の上限を設定すると、それ以上口コミがある「有名な場所」が検索結果から除外されます。")
+                    Text("チェーン店は、店名のキーワードに加えて「候補の中に同名の支店が複数ある」ことでも判定します。口コミ数の上限を設定すると、それ以上口コミがある「有名な場所」が検索結果から除外されます。")
                 }
 
                 // 好みの雰囲気タグ
