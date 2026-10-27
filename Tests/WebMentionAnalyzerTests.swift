@@ -160,7 +160,11 @@ final class WebMentionAnalyzerTests: XCTestCase {
         XCTAssertEqual(AddressParser.locality(from: "神奈川県横浜市西区みなとみらい"), "横浜市")
         XCTAssertEqual(AddressParser.locality(from: "北海道札幌市中央区北一条"), "札幌市")
         XCTAssertEqual(AddressParser.locality(from: "大阪府大阪市北区梅田"), "大阪市")
-        XCTAssertEqual(AddressParser.locality(from: "千葉県市川市八幡"), "市川市")
+        XCTAssertEqual(AddressParser.locality(from: "千葉県市川市八幡"), "市川市", "地名の先頭が「市」でも正しく切る")
+        XCTAssertEqual(AddressParser.locality(from: "東京都武蔵村山市本町"), "武蔵村山市", "地名に「村」を含んでも市で切る")
+        XCTAssertEqual(AddressParser.locality(from: "東京都北区王子"), "北区")
+        XCTAssertEqual(AddressParser.locality(from: "埼玉県さいたま市大宮区"), "さいたま市")
+        XCTAssertEqual(AddressParser.locality(from: "東京都西多摩郡奥多摩町"), "西多摩郡")
     }
 
     func testAddressParser_短い住所からも市区町村を取り出す() {

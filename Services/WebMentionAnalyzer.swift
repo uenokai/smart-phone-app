@@ -248,28 +248,54 @@ enum WebMentionAnalyzer {
 }
 
 /// 住所から市区町村を取り出す
+///
+/// 「市川市」「町田市」「武蔵村山市」のように地名そのものに市・町・村を含む例が多いため、
+/// 正規表現ではなく「都道府県の直後から、2文字目以降で最初に現れる 市→区→郡→町→村 まで」を取る。
+/// 「四日市市」は「四日市」になるが、検索語としては問題ない
 enum AddressParser {
+    private static let specialPrefectures = ["東京都", "北海道", "京都府", "大阪府"]
+    private static let terminals: [Character] = ["市", "区", "郡", "町", "村"]
+
     /// 「日本、〒150-0043 東京都渋谷区道玄坂２丁目…」→「渋谷区」、「神奈川県横浜市西区…」→「横浜市」
     static func locality(from address: String) -> String? {
-        let pattern = "(?:東京都|北海道|京都府|大阪府|[^\\s、〒\\d]{2,3}県)([^\\s、〒\\d]{1,8}?[市区町村郡])"
-        guard let range = address.range(of: pattern, options: .regularExpression) else {
-            return localityWithoutPrefecture(from: address)
+        if let rest = remainderAfterPrefecture(address), let found = scan(rest) {
+            return found
         }
-        let matched = String(address[range])
-        // 都道府県名を除いた残りが市区町村
-        let prefecturePattern = "^(?:東京都|北海道|京都府|大阪府|[^\\s、〒\\d]{2,3}県)"
-        guard let prefRange = matched.range(of: prefecturePattern, options: .regularExpression) else {
-            return matched
+        // 都道府県が無い短い住所（「道玄坂２丁目, 渋谷区」など）は区切りごとに探す
+        let tokens = address.split(whereSeparator: { $0 == "," || $0 == "，" || $0 == "、" || $0.isWhitespace })
+        for token in tokens where !token.contains(where: { $0.isNumber }) {
+            if let found = scan(String(token)) {
+                return found
+            }
         }
-        let locality = String(matched[prefRange.upperBound...])
-        return locality.isEmpty ? nil : locality
+        return nil
     }
 
-    /// 都道府県が無い短い住所（「道玄坂２丁目, 渋谷区」など）から市区町村だけを探す
-    private static func localityWithoutPrefecture(from address: String) -> String? {
-        let pattern = "[^\\s、〒\\d,，]{1,8}?[市区町村郡]"
-        guard let range = address.range(of: pattern, options: .regularExpression) else { return nil }
-        return String(address[range])
+    /// 都道府県名の直後からの文字列
+    private static func remainderAfterPrefecture(_ address: String) -> String? {
+        for prefecture in specialPrefectures {
+            if let range = address.range(of: prefecture) {
+                return String(address[range.upperBound...])
+            }
+        }
+        // 「〇〇県」：県の直前2〜3文字が県名
+        let chars = Array(address)
+        for (index, char) in chars.enumerated() where char == "県" && index >= 2 {
+            return String(chars[(index + 1)...])
+        }
+        return nil
+    }
+
+    /// 先頭6文字以内で、2文字目以降に最初に現れる区切り文字（市→区→郡→町→村の順に優先）までを返す
+    private static func scan(_ text: String) -> String? {
+        let chars = Array(text.prefix(6))
+        guard chars.count >= 2 else { return nil }
+        for terminal in terminals {
+            for index in 1..<chars.count where chars[index] == terminal {
+                return String(chars[0...index])
+            }
+        }
+        return nil
     }
 }
 
